@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 mod linked_dag;
 
 use petgraph::graph::{DiGraph, NodeIndex};
