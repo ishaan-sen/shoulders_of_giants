@@ -1,3 +1,5 @@
+mod linked_dag;
+
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use std::collections::HashMap;
