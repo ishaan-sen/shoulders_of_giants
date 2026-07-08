@@ -63,7 +63,7 @@ mod ndarray {
                 .iter()
                 .map(std::string::ToString::to_string)
                 .collect();
-            let str_longest = str_data.iter().map(|x| String::len(&x)).max().unwrap_or(0);
+            let str_longest = str_data.iter().map(String::len).max().unwrap_or(0);
             str_data = str_data
                 .iter()
                 .map(|x| format!("{x:>str_longest$} "))
@@ -107,8 +107,15 @@ mod ndarray {
         indices
             .iter()
             .rev()
-            .zip(std::iter::once(&1).chain(shape.iter()))
-            .map(|(i, &s)| i * s)
+            .zip(
+                std::iter::once(&1_usize)
+                    .chain(shape.iter().skip(1).rev())
+                    .scan(1, |a, b| {
+                        *a *= b;
+                        Some(*a)
+                    }),
+            )
+            .map(|(i, s)| *i * s)
             .sum()
     }
 }
@@ -141,6 +148,6 @@ mod tests {
         let test_array: Array<i32> = Array::from_fn(&[2, 10, 10], |x: Vec<usize>| {
             i32::try_from(x.iter().sum::<usize>()).unwrap_or(0)
         });
-        assert_eq!(test_array[&[2, 5, 5]], 12);
+        assert_eq!(test_array[&[1, 5, 5]], 11);
     }
 }
