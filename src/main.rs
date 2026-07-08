@@ -5,27 +5,29 @@ mod linked_dag;
 
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 struct Node {
-    id: String,
-    title: String,
-    abstract_text: String,
+    id: Rc<str>,
+    title: Box<str>,
+    abstract_text: Box<str>,
     is_dummy: bool,
 }
 
 struct CSVRecord {
-    id: String,
-    title: String,
-    abstract_text: String,
-    references: Vec<String>,
+    id: Rc<str>,
+    title: Box<str>,
+    abstract_text: Box<str>,
+    references: HashSet<Rc<str>>,
 }
 
-fn parse_references(refs: &str) -> Vec<String> {
+fn parse_references(refs: &str) -> HashSet<Rc<str>> {
     refs.trim_matches(|c| c == '[' || c == ']')
         .split(", ")
-        .map(|s| s.trim_matches('\'').to_string())
+        .map(|s| s.trim_matches('\''))
         .filter(|s| !s.is_empty())
+        .map(Into::into)
         .collect()
 }
 
@@ -35,17 +37,17 @@ fn load_csv(path: &str) -> Vec<CSVRecord> {
         .records()
         .filter_map(|rec| rec.ok())
         .map(|rec| CSVRecord {
-            abstract_text: rec[0].to_string(),
-            title: rec[4].to_string(),
+            abstract_text: rec[0].into(),
+            title: rec[4].into(),
             references: parse_references(&rec[3]),
-            id: rec[7].to_string(),
+            id: rec[7].into(),
         })
         .collect()
 }
 
 fn build_graph(records: &[CSVRecord]) -> DiGraph<Node, ()> {
     let mut graph = DiGraph::<Node, ()>::new();
-    let mut node_map: HashMap<String, NodeIndex> = HashMap::new();
+    let mut node_map: HashMap<Rc<str>, NodeIndex> = HashMap::new();
 
     for r in records {
         let node_idx = graph.add_node(Node {
@@ -64,8 +66,8 @@ fn build_graph(records: &[CSVRecord]) -> DiGraph<Node, ()> {
             let cited_idx = *node_map.entry(reference.clone()).or_insert_with(|| {
                 graph.add_node(Node {
                     id: reference.clone(),
-                    title: String::new(),
-                    abstract_text: String::new(),
+                    title: "".into(),
+                    abstract_text: "".into(),
                     is_dummy: true,
                 })
             });
