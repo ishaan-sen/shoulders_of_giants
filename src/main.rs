@@ -1,6 +1,7 @@
 #![warn(clippy::pedantic)]
 
 mod adj_dag;
+mod dag;
 mod linked_dag;
 mod edge_list_dag;
 
