@@ -2,8 +2,9 @@
 
 mod adj_dag;
 mod dag;
-mod linked_dag;
 mod edge_list_dag;
+mod linked_dag;
+mod linked_dag2;
 
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
