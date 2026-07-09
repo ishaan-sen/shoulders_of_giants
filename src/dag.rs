@@ -5,6 +5,7 @@ pub trait Dag: Default + IndexMut<Self::NodeId, Output = Self::NodeWeight> {
     type NodeId;
     /// Return forward-neighbors of this node in no particular order
     fn neighbors(&self, node: Self::NodeId) -> impl Iterator<Item = Self::NodeId>;
+    fn neighbors_back(&self, node: Self::NodeId) -> impl Iterator<Item = Self::NodeId>;
     fn find_nodes(
         &self,
         func: impl FnMut(Self::NodeId, &Self::NodeWeight) -> bool,
