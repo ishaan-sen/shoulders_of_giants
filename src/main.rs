@@ -6,11 +6,11 @@ mod edge_list_dag;
 mod linked_dag;
 mod linked_dag2;
 
+use edge_list_dag::EdgeListDag;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use edge_list_dag::EdgeListDag;
 
 struct Node {
     id: Rc<str>,
@@ -24,6 +24,12 @@ struct CSVRecord {
     title: Box<str>,
     abstract_text: Box<str>,
     references: HashSet<Rc<str>>,
+}
+
+struct Paper {
+    id: Rc<str>,
+    title: Box<str>,
+    abstract_text: Box<str>,
 }
 
 fn parse_references(refs: &str) -> HashSet<Rc<str>> {
@@ -52,8 +58,8 @@ fn load_csv(path: &str) -> Vec<CSVRecord> {
 fn build_graph(records: &[CSVRecord]) -> (DiGraph<Node, ()>, EdgeListDag) {
     let mut graph = DiGraph::<Node, ()>::new();
     let mut node_map: HashMap<Rc<str>, NodeIndex> = HashMap::new();
-    
-    let mut edge_dag = EdgeListDag::new(); 
+
+    let mut edge_dag = EdgeListDag::new();
 
     for r in records {
         let node_idx = graph.add_node(Node {
@@ -92,8 +98,8 @@ fn build_graph(records: &[CSVRecord]) -> (DiGraph<Node, ()>, EdgeListDag) {
                 Some(&idx) => idx,
                 None => edge_dag.add_node(Node {
                     id: reference.clone(),
-                    title: "".into(), 
-                    abstract_text: "".into(), 
+                    title: "".into(),
+                    abstract_text: "".into(),
                     is_dummy: true,
                 }),
             };
