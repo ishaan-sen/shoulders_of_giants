@@ -18,7 +18,7 @@ mod ndarray {
         }
     }
     impl<T: Default> Array<T> {
-        pub fn from_default(shape: &[usize], elem: &T) -> Self {
+        pub fn from_default(shape: &[usize]) -> Self {
             let elem_ct = shape.iter().product();
             let mut data = Vec::with_capacity(elem_ct);
             for i in 0..elem_ct {
@@ -90,9 +90,15 @@ mod ndarray {
         type Output = T;
         fn index(&self, index: &[usize]) -> &T {
             let idx = indices_to_index(index, &self.shape);
-            println!("Index: {idx}");
             assert!(idx < self.data.len(), "Index out of bounds.");
             &self.data[idx]
+        }
+    }
+    impl<T> std::ops::IndexMut<&[usize]> for Array<T> {
+        fn index_mut(&mut self, index: &[usize]) -> &mut T {
+            let idx = indices_to_index(index, &self.shape);
+            assert!(idx < self.data.len(), "Index out of bounds.");
+            &mut self.data[idx]
         }
     }
     impl<T: Default> Default for Array<T> {
@@ -120,18 +126,53 @@ mod ndarray {
     }
 }
 
-use super::Node;
+use core::iter::Iterator;
+use std::collections::HashMap;
+use std::rc::Rc;
+
+use super::CSVRecord;
 use ndarray::Array;
 
+struct Paper {
+    id: Rc<str>,
+    title: Box<str>,
+    abstract_text: Box<str>,
+}
+
 pub struct AdjDAG {
-    nodes: Vec<Node>,
+    nodes: Vec<Paper>,
+    indexmap: HashMap<Rc<str>, usize>,
     adj: Array<bool>,
 }
-// impl AdjDAG {
-//     fn new(&self, nodes: Vec<Node>) -> Self {
-//         Self {}
-//     }
-// }
+impl AdjDAG {
+    fn new(records: &[CSVRecord]) -> Self {
+        let indexmap: HashMap<Rc<str>, usize> = records
+            .iter()
+            .map(|x| x.id.clone())
+            .enumerate()
+            .map(|(a, b)| (b, a))
+            .collect();
+        let mut adj: Array<bool> = Array::from_default(&[records.len(), records.len()]);
+        for rec in records {
+            for rf in &rec.references {
+                adj[&[indexmap[&rec.id], indexmap[rf]]] = true;
+            }
+        }
+        let nodes = records
+            .iter()
+            .map(|r| Paper {
+                id: r.id.clone(),
+                title: r.title.clone(),
+                abstract_text: r.abstract_text.clone(),
+            })
+            .collect();
+        Self {
+            nodes,
+            indexmap,
+            adj,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -149,5 +190,30 @@ mod tests {
             i32::try_from(x.iter().sum::<usize>()).unwrap_or(0)
         });
         assert_eq!(test_array[&[1, 5, 5]], 11);
+    }
+    #[test]
+    fn test_dag() {
+        let records: [CSVRecord; 3] = [
+            CSVRecord {
+                id: "a".into(),
+                title: "".into(),
+                abstract_text: "".into(),
+                references: std::collections::HashSet::default(),
+            },
+            CSVRecord {
+                id: "b".into(),
+                title: "".into(),
+                abstract_text: "".into(),
+                references: std::collections::HashSet::from(["a".into()]),
+            },
+            CSVRecord {
+                id: "c".into(),
+                title: "".into(),
+                abstract_text: "".into(),
+                references: std::collections::HashSet::from(["a".into(), "b".into()]),
+            },
+        ];
+        let test_dag: AdjDAG = AdjDAG::new(&records);
+        test_dag.adj.print();
     }
 }
