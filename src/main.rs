@@ -2,11 +2,13 @@
 
 mod adj_dag;
 mod linked_dag;
+mod edge_list_dag;
 
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+use edge_list_dag::EdgeListDag;
 
 struct Node {
     id: Rc<str>,
@@ -45,9 +47,11 @@ fn load_csv(path: &str) -> Vec<CSVRecord> {
         .collect()
 }
 
-fn build_graph(records: &[CSVRecord]) -> DiGraph<Node, ()> {
+fn build_graph(records: &[CSVRecord]) -> (DiGraph<Node, ()>, EdgeListDag) {
     let mut graph = DiGraph::<Node, ()>::new();
     let mut node_map: HashMap<Rc<str>, NodeIndex> = HashMap::new();
+    
+    let mut edge_dag = EdgeListDag::new(); 
 
     for r in records {
         let node_idx = graph.add_node(Node {
@@ -57,10 +61,18 @@ fn build_graph(records: &[CSVRecord]) -> DiGraph<Node, ()> {
             is_dummy: false,
         });
         node_map.insert(r.id.clone(), node_idx);
+
+        edge_dag.add_node(Node {
+            id: r.id.clone(),
+            title: r.title.clone(),
+            abstract_text: r.abstract_text.clone(),
+            is_dummy: false,
+        });
     }
 
     for record in records {
         let citer_idx = *node_map.get(&record.id).unwrap();
+        let edge_citer_idx = *edge_dag.node_map.get(&record.id).unwrap();
 
         for reference in &record.references {
             let cited_idx = *node_map.entry(reference.clone()).or_insert_with(|| {
@@ -73,16 +85,27 @@ fn build_graph(records: &[CSVRecord]) -> DiGraph<Node, ()> {
             });
 
             graph.add_edge(citer_idx, cited_idx, ());
+
+            let edge_cited_idx = match edge_dag.node_map.get(reference) {
+                Some(&idx) => idx,
+                None => edge_dag.add_node(Node {
+                    id: reference.clone(),
+                    title: "".into(), 
+                    abstract_text: "".into(), 
+                    is_dummy: true,
+                }),
+            };
+            edge_dag.add_edge(edge_citer_idx, edge_cited_idx);
         }
     }
 
-    graph
+    (graph, edge_dag)
 }
 
 fn main() {
     let records = load_csv("dataset/dblp-v10.csv");
 
-    let graph = build_graph(&records);
+    let (graph, edge_dag) = build_graph(&records);
 
     let total_nodes = graph.node_count();
     let real_count = graph.node_weights().filter(|n| !n.is_dummy).count();
@@ -92,5 +115,11 @@ fn main() {
     println!(
         "total nodes: {} \nreal papers: {} \ndummy nodes: {} \ntotal edges: {}",
         total_nodes, real_count, dummy_count, total_edges
+    );
+
+    println!(
+        "\nEdge List DAG stats:\ntotal nodes: {}\ntotal edges: {}",
+        edge_dag.nodes.len(),
+        edge_dag.edges.len()
     );
 }
