@@ -126,34 +126,33 @@ mod ndarray {
     }
 }
 
-use core::iter::Iterator;
+use core::ops::Index;
 use std::collections::HashMap;
+use std::iter::Iterator;
+use std::ops::IndexMut;
 use std::rc::Rc;
 
 use super::CSVRecord;
+use super::Paper;
+use super::dag::Dag;
 use ndarray::Array;
 
-struct Paper {
-    id: Rc<str>,
-    title: Box<str>,
-    abstract_text: Box<str>,
-}
-
-pub struct AdjDAG {
-    nodes: Vec<Paper>,
+pub struct AdjDAG<T> {
+    nodes: Vec<T>,
     indexmap: HashMap<Rc<str>, usize>,
     adj: Array<bool>,
 }
-impl AdjDAG {
-    fn new(records: &[CSVRecord]) -> Self {
+impl FromIterator<CSVRecord> for AdjDAG<Paper> {
+    fn from_iter<T: IntoIterator<Item = CSVRecord>>(rec_iter: T) -> Self {
+        let records: Vec<CSVRecord> = rec_iter.into_iter().collect();
         let indexmap: HashMap<Rc<str>, usize> = records
             .iter()
             .map(|x| x.id.clone())
             .enumerate()
             .map(|(a, b)| (b, a))
             .collect();
-        let mut adj: Array<bool> = Array::from_default(&[records.len(), records.len()]);
-        for rec in records {
+        let mut adj: Array<bool> = Array::from_default(&[indexmap.len(), indexmap.len()]);
+        for rec in records.iter() {
             for rf in &rec.references {
                 adj[&[indexmap[&rec.id], indexmap[rf]]] = true;
             }
@@ -171,6 +170,65 @@ impl AdjDAG {
             indexmap,
             adj,
         }
+    }
+}
+impl<T> Dag for AdjDAG<T> {
+    type NodeWeight = T;
+
+    type NodeId = usize;
+
+    fn neighbors(&self, node: Self::NodeId) -> impl Iterator<Item = Self::NodeId> {
+        (0..self.nodes.len()).filter(move |connection| self.adj[&[node, *connection]])
+    }
+    fn neighbors_back(&self, node: Self::NodeId) -> impl Iterator<Item = Self::NodeId> {
+        (0..self.nodes.len()).filter(move |connection| self.adj[&[*connection, node]])
+    }
+
+    fn find_nodes(
+        &self,
+        mut func: impl FnMut(&Self::NodeId, &Self::NodeWeight) -> bool,
+    ) -> impl Iterator<Item = Self::NodeId> {
+        self.nodes
+            .iter()
+            .enumerate()
+            .filter_map(move |(id, node)| if func(&id, node) { Some(id) } else { None })
+    }
+
+    fn find_node(
+        &self,
+        mut func: impl FnMut(&Self::NodeId, &Self::NodeWeight) -> bool,
+    ) -> Option<Self::NodeId> {
+        self.nodes
+            .iter()
+            .enumerate()
+            .find_map(|(id, node)| if func(&id, node) { Some(id) } else { None })
+    }
+
+    fn get(&self, id: &Self::NodeId) -> Option<&Self::NodeWeight> {
+        if *id < self.nodes.len() {
+            Some(&self.nodes[*id])
+        } else {
+            None
+        }
+    }
+
+    fn get_mut(&mut self, id: &Self::NodeId) -> Option<&mut Self::NodeWeight> {
+        if *id < self.nodes.len() {
+            Some(&mut self.nodes[*id])
+        } else {
+            None
+        }
+    }
+}
+impl<T> Index<&usize> for AdjDAG<T> {
+    type Output = T;
+    fn index(&self, index: &usize) -> &Self::Output {
+        &self.nodes[*index]
+    }
+}
+impl<T> IndexMut<&usize> for AdjDAG<T> {
+    fn index_mut(&mut self, index: &usize) -> &mut Self::Output {
+        &mut self.nodes[*index]
     }
 }
 
@@ -213,7 +271,7 @@ mod tests {
                 references: std::collections::HashSet::from(["a".into(), "b".into()]),
             },
         ];
-        let test_dag: AdjDAG = AdjDAG::new(&records);
+        let test_dag: AdjDAG<Paper> = records.into_iter().collect();
         test_dag.adj.print();
     }
 }
