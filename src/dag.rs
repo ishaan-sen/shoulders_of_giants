@@ -1,6 +1,6 @@
 use std::ops::IndexMut;
 
-pub trait Dag: Default + for<'id> IndexMut<&'id Self::NodeId, Output = Self::NodeWeight> {
+pub trait Dag: for<'id> IndexMut<&'id Self::NodeId, Output = Self::NodeWeight> {
     type NodeWeight;
     type NodeId;
     /// Return forward-neighbors of this node in no particular order
