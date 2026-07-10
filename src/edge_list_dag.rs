@@ -26,7 +26,7 @@ impl EdgeListDag {
         } else {
             let idx = self.nodes.len();
             // Cloning an Rc just increments the reference counter, it is very fast!
-            self.node_map.insert(node.id.clone(), idx); 
+            self.node_map.insert(node.id.clone(), idx);
             self.nodes.push(node);
             idx
         }
@@ -38,7 +38,7 @@ impl EdgeListDag {
 
     pub fn get_connected_edges(&self, target_id: &str) -> Option<(Vec<&Node>, Vec<&Node>)> {
         let &target_idx = self.node_map.get(target_id)?;
-        
+
         let mut incoming = Vec::new();
         let mut outgoing = Vec::new();
 
