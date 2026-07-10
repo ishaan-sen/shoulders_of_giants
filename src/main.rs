@@ -3,7 +3,6 @@
 mod adj_dag;
 mod dag;
 mod edge_list_dag;
-mod linked_dag;
 mod linked_dag2;
 
 use edge_list_dag::EdgeListDag;
