@@ -41,7 +41,7 @@ impl<T> Hash for NodeRef<T> {
 }
 impl<T> Deref for NodeRef<T> {
     type Target = Rc<Node<T>>;
-    fn deref(&self) -> &Self::Target {
+    fn deref(&self) -> &Rc<Node<T>> {
         &self.0
     }
 }
@@ -70,7 +70,7 @@ impl<T> Hash for NodeWeak<T> {
 }
 impl<T> Deref for NodeWeak<T> {
     type Target = Weak<Node<T>>;
-    fn deref(&self) -> &Self::Target {
+    fn deref(&self) -> &Weak<Node<T>> {
         &self.0
     }
 }
@@ -129,12 +129,12 @@ impl<T> Default for LinkedDag<T> {
 
 impl<T> std::ops::Index<&NodeId<T>> for LinkedDag<T> {
     type Output = T;
-    fn index(&self, index: &NodeId<T>) -> &Self::Output {
+    fn index(&self, index: &NodeId<T>) -> &T {
         self.get(index).expect("NodeId does not exist in graph")
     }
 }
 impl<T> std::ops::IndexMut<&NodeId<T>> for LinkedDag<T> {
-    fn index_mut(&mut self, index: &NodeId<T>) -> &mut Self::Output {
+    fn index_mut(&mut self, index: &NodeId<T>) -> &mut T {
         self.get_mut(index).expect("NodeId does not exist in graph")
     }
 }
@@ -142,7 +142,7 @@ impl<T> std::ops::IndexMut<&NodeId<T>> for LinkedDag<T> {
 impl<T> Dag for LinkedDag<T> {
     type NodeWeight = T;
     type NodeId = NodeId<T>;
-    fn neighbors(&self, node_id: Self::NodeId) -> impl Iterator<Item = Self::NodeId> {
+    fn neighbors(&self, node_id: NodeId<T>) -> impl Iterator<Item = NodeId<T>> {
         node_id.node.upgrade().into_iter().flat_map(|node| {
             node.nexts
                 .iter()
@@ -151,7 +151,7 @@ impl<T> Dag for LinkedDag<T> {
         })
     }
 
-    fn neighbors_back(&self, node_id: Self::NodeId) -> impl Iterator<Item = Self::NodeId> {
+    fn neighbors_back(&self, node_id: NodeId<T>) -> impl Iterator<Item = NodeId<T>> {
         node_id.node.upgrade().into_iter().flat_map(|node| {
             node.prevs
                 .borrow()
@@ -178,7 +178,7 @@ impl<T> Dag for LinkedDag<T> {
         find_node_impl(self, &self.heads, func, &mut HashSet::new())
     }
 
-    fn get(&self, id: &NodeId<T>) -> Option<&Self::NodeWeight> {
+    fn get(&self, id: &NodeId<T>) -> Option<&T> {
         // SAFETY: Assuming that this is the only `LinkedDag` with this `graph_id`, this
         // implementation causes `self` to act like it owns the value contained in the
         // `UnsafeCell`, meaning that the borrow checker will not allow borrow rules
@@ -189,7 +189,7 @@ impl<T> Dag for LinkedDag<T> {
         id.node.upgrade().map(|node| unsafe { &*node.value.get() })
     }
 
-    fn get_mut(&mut self, id: &NodeId<T>) -> Option<&mut Self::NodeWeight> {
+    fn get_mut(&mut self, id: &NodeId<T>) -> Option<&mut T> {
         // SAFETY: See `get` safety comment.
         if id.graph_id != self.graph_id {
             return None;
