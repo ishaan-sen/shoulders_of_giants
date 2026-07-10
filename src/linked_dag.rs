@@ -310,18 +310,18 @@ impl FromIterator<crate::CSVRecord> for LinkedDag<crate::Paper> {
             metadata_map: &HashMap<Rc<str>, (crate::Paper, HashSet<Rc<str>>)>,
             index_map: &mut HashMap<Rc<str>, Id>,
             graph: &mut LinkedDag<crate::Paper>,
-        ) -> Id {
+        ) -> Option<Id> {
             if let Some(node_id) = index_map.get(id) {
-                return node_id.clone();
+                return Some(node_id.clone());
             }
-            let (metadata, refs) = &metadata_map[id];
+            let (metadata, refs) = metadata_map.get(id)?;
             let next_ids = refs
                 .iter()
-                .map(|id| add_paper(id, metadata_map, index_map, graph))
+                .filter_map(|id| add_paper(id, metadata_map, index_map, graph))
                 .collect_vec();
             let node_id = graph.insert_node_lossy(metadata.clone(), next_ids);
             index_map.insert(Rc::clone(id), node_id.clone());
-            node_id
+            Some(node_id)
         }
 
         for id in metadata_map.keys() {
