@@ -154,7 +154,9 @@ impl FromIterator<CSVRecord> for AdjDag<Paper> {
         let mut adj: Array<bool> = Array::from_default(&[indexmap.len(), indexmap.len()]);
         for rec in records.iter() {
             for rf in &rec.references {
-                adj[&[indexmap[&rec.id], indexmap[rf]]] = true;
+                if let Some(&b) = indexmap.get(rf) {
+                    adj[&[indexmap[&rec.id], b]] = true;
+                }
             }
         }
         let nodes = records
