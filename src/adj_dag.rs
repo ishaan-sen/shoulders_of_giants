@@ -137,12 +137,12 @@ use super::Paper;
 use super::dag::Dag;
 use ndarray::Array;
 
-pub struct AdjDAG<T> {
+pub struct AdjDag<T> {
     nodes: Vec<T>,
     indexmap: HashMap<Rc<str>, usize>,
     adj: Array<bool>,
 }
-impl FromIterator<CSVRecord> for AdjDAG<Paper> {
+impl FromIterator<CSVRecord> for AdjDag<Paper> {
     fn from_iter<T: IntoIterator<Item = CSVRecord>>(rec_iter: T) -> Self {
         let records: Vec<CSVRecord> = rec_iter.into_iter().collect();
         let indexmap: HashMap<Rc<str>, usize> = records
@@ -172,7 +172,7 @@ impl FromIterator<CSVRecord> for AdjDAG<Paper> {
         }
     }
 }
-impl<T> Dag for AdjDAG<T> {
+impl<T> Dag for AdjDag<T> {
     type NodeWeight = T;
 
     type NodeId = usize;
@@ -220,13 +220,13 @@ impl<T> Dag for AdjDAG<T> {
         }
     }
 }
-impl<T> Index<&usize> for AdjDAG<T> {
+impl<T> Index<&usize> for AdjDag<T> {
     type Output = T;
     fn index(&self, index: &usize) -> &Self::Output {
         &self.nodes[*index]
     }
 }
-impl<T> IndexMut<&usize> for AdjDAG<T> {
+impl<T> IndexMut<&usize> for AdjDag<T> {
     fn index_mut(&mut self, index: &usize) -> &mut Self::Output {
         &mut self.nodes[*index]
     }
@@ -271,7 +271,7 @@ mod tests {
                 references: std::collections::HashSet::from(["a".into(), "b".into()]),
             },
         ];
-        let test_dag: AdjDAG<Paper> = records.into_iter().collect();
+        let test_dag: AdjDag<Paper> = records.into_iter().collect();
         test_dag.adj.print();
     }
 }

@@ -55,6 +55,26 @@ fn load_csv(path: &str) -> Vec<CSVRecord> {
         .collect()
 }
 
+fn filter_csv(iter: impl IntoIterator<Item = CSVRecord>) -> Vec<CSVRecord> {
+    let recs: Vec<CSVRecord> = iter.into_iter().collect();
+    let mut point_count: HashMap<Rc<str>, (usize, usize)> = HashMap::new();
+    for rec in recs.iter() {
+        for refr in rec.references.iter() {
+            point_count.entry(refr.clone()).or_default().0 += 1;
+        }
+        point_count.entry(rec.id.clone()).or_default().1 = rec.references.len();
+    }
+    recs.into_iter()
+        .filter_map(|rec| {
+            if point_count[&rec.id] != (0, 0) {
+                Some(rec)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
 fn build_graph(records: &[CSVRecord]) -> (DiGraph<Node, ()>, EdgeListDag) {
     let mut graph = DiGraph::<Node, ()>::new();
     let mut node_map: HashMap<Rc<str>, NodeIndex> = HashMap::new();
@@ -111,7 +131,7 @@ fn build_graph(records: &[CSVRecord]) -> (DiGraph<Node, ()>, EdgeListDag) {
 }
 
 fn main() {
-    let records = load_csv("dataset/dblp-v10.csv");
+    let records = filter_csv(load_csv("dataset/dblp-v10.csv"));
 
     let (graph, edge_dag) = build_graph(&records);
 
