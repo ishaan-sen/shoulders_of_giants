@@ -25,6 +25,7 @@ struct CSVRecord {
     references: HashSet<Rc<str>>,
 }
 
+#[derive(Clone)]
 struct Paper {
     id: Rc<str>,
     title: Box<str>,

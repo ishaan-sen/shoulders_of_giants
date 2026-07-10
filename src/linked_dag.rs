@@ -245,3 +245,89 @@ fn find_node_impl<T>(
     }
     None
 }
+
+impl<T> LinkedDag<T> {
+    /// Insert a node given its weight and its forward neighbors, ignoring any forward
+    /// neighbors that do not exist
+    pub fn insert_node_lossy<I: std::borrow::Borrow<NodeId<T>>>(
+        &mut self,
+        weight: T,
+        nexts: impl IntoIterator<Item = I>,
+    ) -> NodeId<T> {
+        let nexts = nexts
+            .into_iter()
+            .filter(|node_id| node_id.borrow().graph_id == self.graph_id)
+            .filter_map(|node_id| node_id.borrow().node.upgrade())
+            .map(NodeRef)
+            .collect();
+        let node = Node {
+            nexts,
+            prevs: RefCell::default(),
+            value: UnsafeCell::new(weight),
+        };
+        let rc = Rc::new(node);
+        for next in &rc.nexts {
+            next.prevs.borrow_mut().insert(NodeWeak(Rc::downgrade(&rc)));
+            self.heads.remove(next);
+        }
+        let node_id = NodeId {
+            graph_id: self.graph_id,
+            node: NodeWeak(Rc::downgrade(&rc)),
+        };
+        self.heads.insert(NodeRef(rc));
+        node_id
+    }
+}
+
+impl FromIterator<crate::CSVRecord> for LinkedDag<crate::Paper> {
+    fn from_iter<T: IntoIterator<Item = crate::CSVRecord>>(iter: T) -> Self {
+        use std::collections::HashMap;
+        type Id = NodeId<crate::Paper>;
+
+        let metadata_map: HashMap<Rc<str>, (crate::Paper, HashSet<Rc<str>>)> = iter
+            .into_iter()
+            .map(|rec| {
+                (
+                    rec.id.clone(),
+                    (
+                        crate::Paper {
+                            id: rec.id,
+                            title: rec.title,
+                            abstract_text: rec.abstract_text,
+                        },
+                        rec.references,
+                    ),
+                )
+            })
+            .collect();
+
+        let mut index_map = HashMap::<Rc<str>, Id>::new();
+        let mut graph = LinkedDag::<crate::Paper>::default();
+
+        #[allow(clippy::items_after_statements)]
+        fn add_paper(
+            id: &Rc<str>,
+            metadata_map: &HashMap<Rc<str>, (crate::Paper, HashSet<Rc<str>>)>,
+            index_map: &mut HashMap<Rc<str>, Id>,
+            graph: &mut LinkedDag<crate::Paper>,
+        ) -> Id {
+            if let Some(node_id) = index_map.get(id) {
+                return node_id.clone();
+            }
+            let (metadata, refs) = &metadata_map[id];
+            let next_ids = refs
+                .iter()
+                .map(|id| add_paper(id, metadata_map, index_map, graph))
+                .collect_vec();
+            let node_id = graph.insert_node_lossy(metadata.clone(), next_ids);
+            index_map.insert(Rc::clone(id), node_id.clone());
+            node_id
+        }
+
+        for id in metadata_map.keys() {
+            add_paper(id, &metadata_map, &mut index_map, &mut graph);
+        }
+
+        graph
+    }
+}
