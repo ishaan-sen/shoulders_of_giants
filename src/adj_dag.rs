@@ -179,11 +179,11 @@ impl<T> Dag for AdjDag<T> {
 
     type NodeId = usize;
 
-    fn neighbors(&self, node: Self::NodeId) -> impl Iterator<Item = Self::NodeId> {
-        (0..self.nodes.len()).filter(move |connection| self.adj[&[node, *connection]])
+    fn neighbors(&self, node: &Self::NodeId) -> impl Iterator<Item = Self::NodeId> {
+        (0..self.nodes.len()).filter(|connection| self.adj[&[*node, *connection]])
     }
-    fn neighbors_back(&self, node: Self::NodeId) -> impl Iterator<Item = Self::NodeId> {
-        (0..self.nodes.len()).filter(move |connection| self.adj[&[*connection, node]])
+    fn neighbors_back(&self, node: &Self::NodeId) -> impl Iterator<Item = Self::NodeId> {
+        (0..self.nodes.len()).filter(|connection| self.adj[&[*connection, *node]])
     }
 
     fn find_nodes(

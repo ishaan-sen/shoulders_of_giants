@@ -1,13 +1,13 @@
 use crate::Paper;
-use std::{collections::HashSet, ops::IndexMut, rc::Rc};
+use std::{collections::HashSet, ops::IndexMut};
 
 pub trait Dag: for<'id> IndexMut<&'id Self::NodeId, Output = Self::NodeWeight> {
     type NodeWeight;
-    type NodeId;
+    type NodeId: Eq + std::hash::Hash + Clone;
     /// Return forward-neighbors of this node in no particular order
-    fn neighbors(&self, node: Self::NodeId) -> impl Iterator<Item = Self::NodeId>;
+    fn neighbors(&self, node: &Self::NodeId) -> impl Iterator<Item = Self::NodeId>;
     /// Return reverse-neighbors of this node in no particular order
-    fn neighbors_back(&self, node: Self::NodeId) -> impl Iterator<Item = Self::NodeId>;
+    fn neighbors_back(&self, node: &Self::NodeId) -> impl Iterator<Item = Self::NodeId>;
     /// Return IDs of nodes matching some criterion
     fn find_nodes(
         &self,
@@ -23,43 +23,33 @@ pub trait Dag: for<'id> IndexMut<&'id Self::NodeId, Output = Self::NodeWeight> {
     // what other functions go here?
 }
 
-fn find_by_id(dag: &impl Dag<NodeWeight = Paper>, id: Rc<str>) -> Option<&Paper> {
-    dag.find_node(|_, weight| weight.id == id)
+fn find_by_id<'g>(dag: &'g impl Dag<NodeWeight = Paper>, id: &str) -> Option<&'g Paper> {
+    dag.find_node(|_, weight| *weight.id == *id)
         .map(|node_id| &dag[&node_id])
 }
 
 // fn earliest_common_descendant(dag: &impl Dag<NodeWeight = Paper>) -> impl Iterator<Item = Paper> {
 //     todo!()
 // }
-fn last_common_ancestor<T: Eq + std::hash::Hash + Clone>(
-    dag: &impl Dag<NodeWeight = Paper, NodeId = T>,
-    a: T,
-    b: T,
-) -> impl Iterator<Item = &Paper> {
-    let mut visited_a: HashSet<T> = HashSet::new();
-    let mut visited_b: HashSet<T> = HashSet::new();
-    let mut check_a: HashSet<T> = dag.neighbors(a).collect();
-    let mut check_b: HashSet<T> = dag.neighbors(b).collect();
-    let mut resulting: HashSet<T> = HashSet::new();
+fn last_common_ancestor<'g, G: Dag<NodeWeight = Paper>>(
+    dag: &'g G,
+    a: &G::NodeId,
+    b: &G::NodeId,
+) -> impl Iterator<Item = &'g Paper> {
+    let mut visited_a = HashSet::<G::NodeId>::new();
+    let mut visited_b = HashSet::<G::NodeId>::new();
+    let mut check_a: HashSet<G::NodeId> = dag.neighbors(a).collect();
+    let mut check_b: HashSet<G::NodeId> = dag.neighbors(b).collect();
+    let mut resulting = HashSet::<G::NodeId>::new();
     loop {
         if check_a.is_empty() && check_b.is_empty() {
             break;
         }
         if check_a.is_disjoint(&visited_b) && check_b.is_disjoint(&visited_a) {
-            let temp: HashSet<T> = check_a
-                .iter()
-                .cloned()
-                .map(|x| dag.neighbors(x))
-                .flatten()
-                .collect();
+            let temp: HashSet<G::NodeId> = check_a.iter().flat_map(|x| dag.neighbors(x)).collect();
             visited_a.extend(check_a);
             check_a = temp;
-            let temp: HashSet<T> = check_b
-                .iter()
-                .cloned()
-                .map(|x| dag.neighbors(x))
-                .flatten()
-                .collect();
+            let temp: HashSet<G::NodeId> = check_b.iter().flat_map(|x| dag.neighbors(x)).collect();
             visited_b.extend(check_b);
             check_b = temp;
         } else {

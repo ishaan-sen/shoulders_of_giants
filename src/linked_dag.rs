@@ -142,7 +142,7 @@ impl<T> std::ops::IndexMut<&NodeId<T>> for LinkedDag<T> {
 impl<T> Dag for LinkedDag<T> {
     type NodeWeight = T;
     type NodeId = NodeId<T>;
-    fn neighbors(&self, node_id: NodeId<T>) -> impl Iterator<Item = NodeId<T>> {
+    fn neighbors(&self, node_id: &NodeId<T>) -> impl Iterator<Item = NodeId<T>> {
         node_id.node.upgrade().into_iter().flat_map(|node| {
             node.nexts
                 .iter()
@@ -151,7 +151,7 @@ impl<T> Dag for LinkedDag<T> {
         })
     }
 
-    fn neighbors_back(&self, node_id: NodeId<T>) -> impl Iterator<Item = NodeId<T>> {
+    fn neighbors_back(&self, node_id: &NodeId<T>) -> impl Iterator<Item = NodeId<T>> {
         node_id.node.upgrade().into_iter().flat_map(|node| {
             node.prevs
                 .borrow()
