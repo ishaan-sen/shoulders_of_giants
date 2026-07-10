@@ -44,7 +44,7 @@ fn load_csv(path: &str) -> Vec<CSVRecord> {
     let mut reader = csv::Reader::from_path(path).unwrap();
     reader
         .records()
-        .filter_map(|rec| rec.ok())
+        .filter_map(Result::ok)
         .map(|rec| CSVRecord {
             abstract_text: rec[0].into(),
             title: rec[4].into(),
@@ -57,20 +57,14 @@ fn load_csv(path: &str) -> Vec<CSVRecord> {
 fn filter_csv(iter: impl IntoIterator<Item = CSVRecord>) -> Vec<CSVRecord> {
     let recs: Vec<CSVRecord> = iter.into_iter().collect();
     let mut point_count: HashMap<Rc<str>, (usize, usize)> = HashMap::new();
-    for rec in recs.iter() {
-        for refr in rec.references.iter() {
+    for rec in &recs {
+        for refr in &rec.references {
             point_count.entry(refr.clone()).or_default().0 += 1;
         }
         point_count.entry(rec.id.clone()).or_default().1 = rec.references.len();
     }
     recs.into_iter()
-        .filter_map(|rec| {
-            if point_count[&rec.id] != (0, 0) {
-                Some(rec)
-            } else {
-                None
-            }
-        })
+        .filter(|rec| point_count[&rec.id] != (0, 0))
         .collect()
 }
 
@@ -140,8 +134,7 @@ fn main() {
     let total_edges = graph.edge_count();
 
     println!(
-        "total nodes: {} \nreal papers: {} \ndummy nodes: {} \ntotal edges: {}",
-        total_nodes, real_count, dummy_count, total_edges
+        "total nodes: {total_nodes} \nreal papers: {real_count} \ndummy nodes: {dummy_count} \ntotal edges: {total_edges}"
     );
 
     println!(
