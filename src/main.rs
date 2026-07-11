@@ -249,7 +249,7 @@ fn main() {
 
     let all_records = print_time_taken!(load_csv("dataset/dblp-v10.csv"));
 
-    println!("murdering orphans");
+    println!("removing orphaned nodes");
     let records: Vec<CSVRecord> = print_time_taken!(filter_disconnected(
         all_records.into_iter().take(num_lines).collect()
     ));
