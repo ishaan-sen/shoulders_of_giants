@@ -8,5 +8,9 @@ Mapping fields of study is important because it enables researchers to quickly u
 
 Features:
 - Given a paper, list all of its incoming and outgoing edges and the papers they point to/from
-- Given n papers, find the earliest common descendant
-- Given n papers, find the last common ancestor 
+- Given 2 papers, find the earliest common descendant
+- Given 2 papers, find the last common ancestor 
+
+
+Dataset: https://www.kaggle.com/datasets/nechbamohammed/research-papers-dataset 
+
