@@ -23,7 +23,7 @@ pub trait Dag: for<'id> IndexMut<&'id Self::NodeId, Output = Self::NodeWeight> {
     // what other functions go here?
 }
 
-fn find_by_id<'g>(dag: &'g impl Dag<NodeWeight = Paper>, id: &str) -> Option<&'g Paper> {
+pub fn find_by_id<'g>(dag: &'g impl Dag<NodeWeight = Paper>, id: &str) -> Option<&'g Paper> {
     dag.find_node(|_, weight| *weight.id == *id)
         .map(|node_id| &dag[&node_id])
 }
@@ -31,7 +31,7 @@ fn find_by_id<'g>(dag: &'g impl Dag<NodeWeight = Paper>, id: &str) -> Option<&'g
 // fn earliest_common_descendant(dag: &impl Dag<NodeWeight = Paper>) -> impl Iterator<Item = Paper> {
 //     todo!()
 // }
-fn last_common_ancestor<'g, G: Dag<NodeWeight = Paper>>(
+pub fn last_common_ancestor<'g, G: Dag<NodeWeight = Paper>>(
     dag: &'g G,
     a: &G::NodeId,
     b: &G::NodeId,
@@ -45,6 +45,13 @@ fn last_common_ancestor<'g, G: Dag<NodeWeight = Paper>>(
         if check_a.is_empty() && check_b.is_empty() {
             break;
         }
+
+        let meet: HashSet<G::NodeId> = check_a.intersection(&check_b).cloned().collect();
+        if !meet.is_empty() {
+            resulting.extend(meet);
+            break;
+        }
+
         if check_a.is_disjoint(&visited_b) && check_b.is_disjoint(&visited_a) {
             let temp: HashSet<G::NodeId> = check_a.iter().flat_map(|x| dag.neighbors(x)).collect();
             visited_a.extend(check_a);
