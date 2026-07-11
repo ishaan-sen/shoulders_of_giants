@@ -335,12 +335,12 @@ fn truncate_str(s: &str, max_chars: usize) -> Cow<'_, str> {
 
 fn print_paper_table(title: &str, papers: &[&Paper]) {
     println!("{title}");
-    println!("{:-<1$}", "", 80);
-    println!("{:<30} {:<20} {:<10}", "Title", "ID", "Abstract"); // I really like this syntax actually, so much better than cpp
-    println!("{:-<1$}", "", 80);
+    println!("{:-<1$}", "", 111);
+    println!("{:<30} {:<36} {:<35}", "Title", "ID", "Abstract"); // I really like this syntax actually, so much better than cpp
+    println!("{:-<1$}", "", 111);
     for p in papers {
         println!(
-            "{:<30} {:<20} {:<10}",
+            "{:<30} {:<36} {:<35}",
             truncate_str(&p.title, 27),
             p.id,
             truncate_str(&p.abstract_text, 40)
