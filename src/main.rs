@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 mod adj_dag;
 mod dag;
 mod edge_list_dag;
@@ -9,32 +11,23 @@ use std::io::{self, Write};
 use std::rc::Rc;
 
 use adj_dag::AdjDag;
-use dag::{Dag, last_common_ancestor};
+use dag::{earliest_common_descendant, last_common_ancestor, Dag};
+use edge_list_dag::EdgeListDag;
 use linked_dag::LinkedDag;
 
-use crate::dag::earliest_common_descendant;
-
-#[allow(dead_code)]
-pub struct Node {
-    id: Rc<str>,
-    title: Box<str>,
-    abstract_text: Box<str>,
-    is_dummy: bool,
+#[derive(Clone)]
+pub struct CSVRecord {
+    pub id: Rc<str>,
+    pub title: Box<str>,
+    pub abstract_text: Box<str>,
+    pub references: HashSet<Rc<str>>,
 }
 
 #[derive(Clone)]
-struct CSVRecord {
-    id: Rc<str>,
-    title: Box<str>,
-    abstract_text: Box<str>,
-    references: HashSet<Rc<str>>,
-}
-
-#[derive(Clone)]
-struct Paper {
-    id: Rc<str>,
-    title: Box<str>,
-    abstract_text: Box<str>,
+pub struct Paper {
+    pub id: Rc<str>,
+    pub title: Box<str>,
+    pub abstract_text: Box<str>,
 }
 
 fn parse_references(refs: &str) -> HashSet<Rc<str>> {
@@ -62,7 +55,7 @@ fn load_csv(path: &str) -> Vec<CSVRecord> {
 
 fn list_related_papers(dag: &impl Dag<NodeWeight = Paper>) {
     print!("Enter paper ID: ");
-    io::stdout().flush().ok(); // doesn't print consistently without this
+    io::stdout().flush().ok();
     let mut id = String::new();
     if io::stdin().read_line(&mut id).is_err() {
         return;
@@ -180,6 +173,7 @@ fn earliest_common_descendant_op(dag: &impl Dag<NodeWeight = Paper>) {
 enum ActiveDag<'a> {
     Adj(&'a AdjDag<Paper>),
     Linked(&'a LinkedDag<Paper>),
+    EdgeList(&'a EdgeListDag<Paper>),
 }
 
 impl<'a> ActiveDag<'a> {
@@ -187,6 +181,7 @@ impl<'a> ActiveDag<'a> {
         match self {
             ActiveDag::Adj(_) => "adjacency matrix",
             ActiveDag::Linked(_) => "pointer-based",
+            ActiveDag::EdgeList(_) => "edge list",
         }
     }
 
@@ -194,6 +189,7 @@ impl<'a> ActiveDag<'a> {
         match self {
             ActiveDag::Adj(d) => list_related_papers(*d),
             ActiveDag::Linked(d) => list_related_papers(*d),
+            ActiveDag::EdgeList(d) => list_related_papers(*d),
         }
     }
 
@@ -201,12 +197,15 @@ impl<'a> ActiveDag<'a> {
         match self {
             ActiveDag::Adj(d) => latest_common_ancestor_op(*d),
             ActiveDag::Linked(d) => latest_common_ancestor_op(*d),
+            ActiveDag::EdgeList(d) => latest_common_ancestor_op(*d),
         }
     }
+
     fn ecd(&self) {
         match self {
             ActiveDag::Adj(d) => earliest_common_descendant_op(*d),
             ActiveDag::Linked(d) => earliest_common_descendant_op(*d),
+            ActiveDag::EdgeList(d) => earliest_common_descendant_op(*d),
         }
     }
 
@@ -214,6 +213,7 @@ impl<'a> ActiveDag<'a> {
         match self {
             ActiveDag::Adj(d) => search_papers(*d),
             ActiveDag::Linked(d) => search_papers(*d),
+            ActiveDag::EdgeList(d) => search_papers(*d),
         }
     }
 }
@@ -256,14 +256,22 @@ fn main() {
     let linked: LinkedDag<Paper> = records.iter().cloned().collect();
 
     println!("building adjdag");
-    let adj: AdjDag<Paper> = records.into_iter().collect();
+    let adj: AdjDag<Paper> = records.iter().cloned().collect();
+
+    println!("building edgelistdag");
+    let edge_list: EdgeListDag<Paper> = records.into_iter().collect();
 
     let mut active = ActiveDag::Adj(&adj);
 
-    menu_loop(&mut active, &adj, &linked);
+    menu_loop(&mut active, &adj, &linked, &edge_list);
 }
 
-fn menu_loop<'a>(active: &mut ActiveDag<'a>, adj: &'a AdjDag<Paper>, linked: &'a LinkedDag<Paper>) {
+fn menu_loop<'a>(
+    active: &mut ActiveDag<'a>,
+    adj: &'a AdjDag<Paper>,
+    linked: &'a LinkedDag<Paper>,
+    edge_list: &'a EdgeListDag<Paper>,
+) {
     loop {
         println!();
         println!("Select an operation:");
@@ -289,7 +297,8 @@ fn menu_loop<'a>(active: &mut ActiveDag<'a>, adj: &'a AdjDag<Paper>, linked: &'a
             "5" => {
                 *active = match active {
                     ActiveDag::Adj(_) => ActiveDag::Linked(linked),
-                    ActiveDag::Linked(_) => ActiveDag::Adj(adj),
+                    ActiveDag::Linked(_) => ActiveDag::EdgeList(edge_list),
+                    ActiveDag::EdgeList(_) => ActiveDag::Adj(adj),
                 };
                 println!("Switched to {}.", active.name());
             }
@@ -302,9 +311,6 @@ fn menu_loop<'a>(active: &mut ActiveDag<'a>, adj: &'a AdjDag<Paper>, linked: &'a
     }
 }
 
-// Since this function might or might not need to modify its input, it returns
-// a clone-on-write (`Cow`) objects, which could wrap either a borrowed `&str`
-// or an owned `String`
 fn truncate_str(s: &str, max_chars: usize) -> Cow<'_, str> {
     if s.chars().count() > max_chars {
         let t: String = s.chars().take(max_chars).collect();
@@ -317,7 +323,7 @@ fn truncate_str(s: &str, max_chars: usize) -> Cow<'_, str> {
 fn print_paper_table(title: &str, papers: &[&Paper]) {
     println!("{title}");
     println!("{:-<1$}", "", 80);
-    println!("{:<30} {:<20} {:<10}", "Title", "ID", "Abstract"); // I really like this syntax actually, so much better than cpp
+    println!("{:<30} {:<20} {:<10}", "Title", "ID", "Abstract");
     println!("{:-<1$}", "", 80);
     for p in papers {
         println!(
