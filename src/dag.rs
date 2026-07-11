@@ -2,7 +2,9 @@ use crate::Paper;
 use std::{collections::HashSet, ops::IndexMut};
 
 pub trait Dag: for<'id> IndexMut<&'id Self::NodeId, Output = Self::NodeWeight> {
+    /// The type of data contained within nodes of the graph
     type NodeWeight;
+    /// The type by which specific nodes of the graph may be identified
     type NodeId: Eq + std::hash::Hash + Clone;
     /// Return forward-neighbors of this node in no particular order
     fn neighbors(&self, node: &Self::NodeId) -> impl Iterator<Item = Self::NodeId>;
@@ -28,9 +30,6 @@ pub fn find_by_id<'g>(dag: &'g impl Dag<NodeWeight = Paper>, id: &str) -> Option
         .map(|node_id| &dag[&node_id])
 }
 
-// fn earliest_common_descendant(dag: &impl Dag<NodeWeight = Paper>) -> impl Iterator<Item = Paper> {
-//     todo!()
-// }
 pub fn last_common_ancestor<'g, G: Dag<NodeWeight = Paper>>(
     dag: &'g G,
     a: &G::NodeId,

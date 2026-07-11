@@ -170,6 +170,8 @@ impl<T> Dag for LinkedDag<T> {
         &self,
         mut func: impl FnMut(&NodeId<T>, &T) -> bool,
     ) -> impl Iterator<Item = NodeId<T>> {
+        // Breadth-first search using a queue and pruning to avoid searching branches
+        // multiple times
         let mut found = HashSet::new();
 
         let mut searched = HashSet::<usize>::new();
@@ -195,6 +197,8 @@ impl<T> Dag for LinkedDag<T> {
     }
 
     fn find_node(&self, mut func: impl FnMut(&NodeId<T>, &T) -> bool) -> Option<NodeId<T>> {
+        // Breadth-first search using a queue and pruning to avoid searching branches
+        // multiple times
         let mut searched = HashSet::<usize>::new();
         let mut to_search = self
             .heads
@@ -273,10 +277,13 @@ impl<T> LinkedDag<T> {
 }
 
 impl FromIterator<crate::CSVRecord> for LinkedDag<crate::Paper> {
+    // Build a `LinkedDag` from a list of dataset CSV entries
     fn from_iter<T: IntoIterator<Item = crate::CSVRecord>>(iter: T) -> Self {
         use std::collections::HashMap;
         type Id = NodeId<crate::Paper>;
 
+        // Mapping from paper IDs to paper metadata and reference lists
+        // Paper metadata is stored as a `Paper`, and reference lists are `HashSet<Rc<str>>`
         let metadata_map: HashMap<Rc<str>, (crate::Paper, HashSet<Rc<str>>)> = iter
             .into_iter()
             .map(|rec| {
@@ -294,6 +301,9 @@ impl FromIterator<crate::CSVRecord> for LinkedDag<crate::Paper> {
             })
             .collect();
 
+        // We create nodes for all the papers first, then connect the pointers afterward
+        // This is more computationally efficient than trying to add the papers in
+        // chronological order to allow them to have NodeIds
         let mut nodes = HashMap::<Rc<str>, NodeRef<crate::Paper>>::new();
         for (id, (metadata, _)) in &metadata_map {
             let node = Node {
