@@ -67,3 +67,42 @@ pub fn last_common_ancestor<'g, G: Dag<NodeWeight = Paper>>(
     }
     resulting.into_iter().map(|x| &dag[&x])
 }
+
+pub fn earliest_common_descendant<'g, G: Dag<NodeWeight = Paper>>(
+    dag: &'g G,
+    a: &G::NodeId,
+    b: &G::NodeId,
+) -> impl Iterator<Item = &'g Paper> {
+    let mut visited_a = HashSet::<G::NodeId>::new();
+    let mut visited_b = HashSet::<G::NodeId>::new();
+    let mut check_a: HashSet<G::NodeId> = dag.neighbors_back(a).collect();
+    let mut check_b: HashSet<G::NodeId> = dag.neighbors_back(b).collect();
+    let mut resulting = HashSet::<G::NodeId>::new();
+    loop {
+        if check_a.is_empty() && check_b.is_empty() {
+            break;
+        }
+
+        let meet: HashSet<G::NodeId> = check_a.intersection(&check_b).cloned().collect();
+        if !meet.is_empty() {
+            resulting.extend(meet);
+            break;
+        }
+
+        if check_a.is_disjoint(&visited_b) && check_b.is_disjoint(&visited_a) {
+            let temp: HashSet<G::NodeId> =
+                check_a.iter().flat_map(|x| dag.neighbors_back(x)).collect();
+            visited_a.extend(check_a);
+            check_a = temp;
+            let temp: HashSet<G::NodeId> =
+                check_b.iter().flat_map(|x| dag.neighbors_back(x)).collect();
+            visited_b.extend(check_b);
+            check_b = temp;
+        } else {
+            resulting.extend(check_a.intersection(&visited_b).cloned());
+            resulting.extend(check_b.intersection(&visited_a).cloned());
+            break;
+        }
+    }
+    resulting.into_iter().map(|x| &dag[&x])
+}
