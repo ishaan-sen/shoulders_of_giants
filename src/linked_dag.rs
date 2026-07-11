@@ -310,29 +310,6 @@ impl FromIterator<crate::CSVRecord> for LinkedDag<crate::Paper> {
             })
             .collect();
 
-        // let mut index_map = HashMap::<Rc<str>, Id>::new();
-        // let mut graph = LinkedDag::<crate::Paper>::default();
-
-        // let mut to_add: std::collections::VecDeque<_> = metadata_map.keys().cloned().collect();
-        // while let Some(id) = to_add.pop_front() {
-        //     let Some((metadata, refs)) = metadata_map.get(&id) else {
-        //         continue;
-        //     };
-        //     let Some(next_ids) = refs
-        //         .iter()
-        //         .filter(|&ref_id| metadata_map.contains_key(ref_id))
-        //         .map(|ref_id| index_map.get(ref_id))
-        //         .collect::<Option<Vec<_>>>()
-        //     else {
-        //         to_add.push_back(id);
-        //         continue;
-        //     };
-        //     let node_id = graph.insert_node_lossy(metadata.clone(), next_ids);
-        //     index_map.insert(id, node_id);
-        // }
-
-        // let mut priorities = HashMap::<Rc<str>, u32>::new();
-
         let mut nodes = HashMap::<Rc<str>, NodeRef<crate::Paper>>::new();
         for (id, (metadata, _)) in &metadata_map {
             let node = Node {
@@ -364,8 +341,6 @@ impl FromIterator<crate::CSVRecord> for LinkedDag<crate::Paper> {
             .filter(|(id, _)| !non_head_ids.contains(id))
             .map(|(_, node_ref)| node_ref)
             .collect();
-
-        // graph
 
         LinkedDag {
             graph_id: rand::random(),
