@@ -3,6 +3,7 @@ mod dag;
 mod edge_list_dag;
 mod linked_dag;
 
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::io::{self, Write};
 use std::rc::Rc;
@@ -301,12 +302,15 @@ fn menu_loop<'a>(active: &mut ActiveDag<'a>, adj: &'a AdjDag<Paper>, linked: &'a
     }
 }
 
-fn truncate_str(s: &str, max_chars: usize) -> String {
+// Since this function might or might not need to modify its input, it returns
+// a clone-on-write (`Cow`) objects, which could wrap either a borrowed `&str`
+// or an owned `String`
+fn truncate_str(s: &str, max_chars: usize) -> Cow<'_, str> {
     if s.chars().count() > max_chars {
         let t: String = s.chars().take(max_chars).collect();
-        format!("{t}...")
+        format!("{t}...").into()
     } else {
-        s.to_string()
+        s.into()
     }
 }
 
