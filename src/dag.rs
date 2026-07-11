@@ -25,6 +25,7 @@ pub trait Dag: for<'id> IndexMut<&'id Self::NodeId, Output = Self::NodeWeight> {
     // what other functions go here?
 }
 
+#[allow(dead_code)]
 pub fn find_by_id<'g>(dag: &'g impl Dag<NodeWeight = Paper>, id: &str) -> Option<&'g Paper> {
     dag.find_node(|_, weight| *weight.id == *id)
         .map(|node_id| &dag[&node_id])

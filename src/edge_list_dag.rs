@@ -16,8 +16,8 @@ impl<T> EdgeListDag<T> {
         }
     }
 
-    pub fn add_edge(&mut self, citer_idx: usize, cited_idx: usize) {
-        self.edges.push((citer_idx, cited_idx));
+    pub fn add_edge(&mut self, start: usize, end: usize) {
+        self.edges.push((start, end));
     }
 }
 

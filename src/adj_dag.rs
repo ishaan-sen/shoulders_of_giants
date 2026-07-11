@@ -139,7 +139,6 @@ use ndarray::Array;
 
 pub struct AdjDag<T> {
     pub nodes: Vec<T>,
-    indexmap: HashMap<Rc<str>, usize>,
     adj: Array<bool>,
 }
 impl FromIterator<CSVRecord> for AdjDag<Paper> {
@@ -167,11 +166,7 @@ impl FromIterator<CSVRecord> for AdjDag<Paper> {
                 abstract_text: r.abstract_text.clone(),
             })
             .collect();
-        Self {
-            nodes,
-            indexmap,
-            adj,
-        }
+        Self { nodes, adj }
     }
 }
 impl<T> Dag for AdjDag<T> {
