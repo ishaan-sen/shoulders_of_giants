@@ -138,7 +138,7 @@ use super::dag::Dag;
 use ndarray::Array;
 
 pub struct AdjDag<T> {
-    nodes: Vec<T>,
+    pub nodes: Vec<T>,
     indexmap: HashMap<Rc<str>, usize>,
     adj: Array<bool>,
 }
