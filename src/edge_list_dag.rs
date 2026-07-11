@@ -1,5 +1,5 @@
-use crate::dag::Dag;
 use crate::Paper;
+use crate::dag::Dag;
 use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 
@@ -25,7 +25,7 @@ impl FromIterator<crate::CSVRecord> for EdgeListDag<Paper> {
     fn from_iter<T: IntoIterator<Item = crate::CSVRecord>>(iter: T) -> Self {
         let mut dag = EdgeListDag::new();
         let records: Vec<_> = iter.into_iter().collect();
-        
+
         let mut node_map = HashMap::new();
 
         for rec in &records {
@@ -73,24 +73,20 @@ impl<T> Dag for EdgeListDag<T> {
 
     fn neighbors(&self, node: &Self::NodeId) -> impl Iterator<Item = Self::NodeId> {
         let target = *node;
-        self.edges.iter().filter_map(move |&(citer, cited)| {
-            if citer == target {
-                Some(cited)
-            } else {
-                None
-            }
-        })
+        self.edges.iter().filter_map(
+            move |&(citer, cited)| {
+                if citer == target { Some(cited) } else { None }
+            },
+        )
     }
 
     fn neighbors_back(&self, node: &Self::NodeId) -> impl Iterator<Item = Self::NodeId> {
         let target = *node;
-        self.edges.iter().filter_map(move |&(citer, cited)| {
-            if cited == target {
-                Some(citer)
-            } else {
-                None
-            }
-        })
+        self.edges.iter().filter_map(
+            move |&(citer, cited)| {
+                if cited == target { Some(citer) } else { None }
+            },
+        )
     }
 
     fn find_nodes(
