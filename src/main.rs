@@ -156,7 +156,7 @@ fn earliest_common_descendant_op(dag: &impl Dag<NodeWeight = Paper>) {
     if ancestors.is_empty() {
         println!("No common ancestor found.");
     } else {
-        println!("\nLatest common ancestor(s):");
+        println!("\nEarliest common descendant(s):");
         for p in &ancestors {
             println!(
                 "  ID: {} | Title: {} | Abstract: {}",
@@ -268,7 +268,7 @@ fn menu_loop<'a>(active: &mut ActiveDag<'a>, adj: &'a AdjDag<Paper>, linked: &'a
         println!("Select an operation:");
         println!("  1. List related papers");
         println!("  2. Latest common ancestor");
-        println!("  3. Latest common ancestor");
+        println!("  3. Earliest common descendant");
         println!("  4. Search papers");
         println!("  5. Select DAG (currently {})", active.name());
         println!("  6. Exit");
