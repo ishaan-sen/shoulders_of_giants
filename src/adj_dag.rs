@@ -1,6 +1,7 @@
 #![warn(clippy::pedantic)]
 
 #[allow(unused)]
+// This custom ndarray implementation is used as the backend for the adjacency matrix. In order to avoid numerous reallocations during construction, all constructors allocate in one shot.
 mod ndarray {
     use itertools::Itertools;
     use std::option::IntoIter;
@@ -9,6 +10,7 @@ mod ndarray {
         shape: Vec<usize>,
         data: Vec<T>,
     }
+    // Create an array by cloning a single element into every position
     impl<T: Clone> Array<T> {
         pub fn from_elem(shape: &[usize], elem: T) -> Self {
             Self {
@@ -17,6 +19,7 @@ mod ndarray {
             }
         }
     }
+    // Create an array by initializing every element with the default value for that type
     impl<T: Default> Array<T> {
         pub fn from_default(shape: &[usize]) -> Self {
             let elem_ct = shape.iter().product();
@@ -30,6 +33,7 @@ mod ndarray {
             }
         }
     }
+    // Create an array by filling indices by iterator
     impl<T> Array<T> {
         pub fn from_iter<I: Iterator<Item = T>>(shape: &[usize], iter: I) -> Self {
             let data: Vec<T> = iter.collect();
@@ -42,6 +46,7 @@ mod ndarray {
                 shape: shape.into(),
             }
         }
+        // Create an array by filling indices with the output of a function of the indices
         pub fn from_fn<I: FromIterator<usize>, F: Fn(I) -> T>(shape: &[usize], func: F) -> Self {
             let elem_ct = shape.iter().product();
             let mut data = Vec::with_capacity(elem_ct);
@@ -56,6 +61,7 @@ mod ndarray {
             }
         }
     }
+    // Print an array to the console, with the last axis being horizontal, and the remaining axes printed vertically, with increasing spacing
     impl<T: std::fmt::Display> Array<T> {
         pub fn print(&self) {
             let mut str_data: Vec<String> = self
@@ -86,6 +92,7 @@ mod ndarray {
             });
         }
     }
+    // Acquire a reference to the value at an index
     impl<T> std::ops::Index<&[usize]> for Array<T> {
         type Output = T;
         fn index(&self, index: &[usize]) -> &T {
@@ -94,6 +101,7 @@ mod ndarray {
             &self.data[idx]
         }
     }
+    // Acquire a mutable reference to the value at an index
     impl<T> std::ops::IndexMut<&[usize]> for Array<T> {
         fn index_mut(&mut self, index: &[usize]) -> &mut T {
             let idx = indices_to_index(index, &self.shape);
@@ -101,6 +109,7 @@ mod ndarray {
             &mut self.data[idx]
         }
     }
+    // Create a default, empty ndarray
     impl<T: Default> Default for Array<T> {
         fn default() -> Self {
             Self {
@@ -109,6 +118,7 @@ mod ndarray {
             }
         }
     }
+    // Convert from a shaped index to a flat index
     fn indices_to_index(indices: &[usize], shape: &[usize]) -> usize {
         indices
             .iter()
@@ -137,10 +147,13 @@ use super::Paper;
 use super::dag::Dag;
 use ndarray::Array;
 
+// DAG holds a list of the nodes, as well as a matrix describing the connections
+// Note that the memory footprint of the matrix increases with the square of the node count
 pub struct AdjDag<T> {
     pub nodes: Vec<T>,
     adj: Array<bool>,
 }
+// The general way to construct a dag across the implementations is from an iterator
 impl FromIterator<CSVRecord> for AdjDag<Paper> {
     fn from_iter<T: IntoIterator<Item = CSVRecord>>(rec_iter: T) -> Self {
         let records: Vec<CSVRecord> = rec_iter.into_iter().collect();
@@ -169,18 +182,21 @@ impl FromIterator<CSVRecord> for AdjDag<Paper> {
         Self { nodes, adj }
     }
 }
+// Implementations of the standard DAG interface
 impl<T> Dag for AdjDag<T> {
     type NodeWeight = T;
 
     type NodeId = usize;
 
+    // Return an iterator of node ids filtered by whether there is true or false in the matrix column
     fn neighbors(&self, node: &Self::NodeId) -> impl Iterator<Item = Self::NodeId> {
         (0..self.nodes.len()).filter(|connection| self.adj[&[*node, *connection]])
     }
+    // Return an iterator of node ids filtered by whether there is a true or false in the matrix row
     fn neighbors_back(&self, node: &Self::NodeId) -> impl Iterator<Item = Self::NodeId> {
         (0..self.nodes.len()).filter(|connection| self.adj[&[*connection, *node]])
     }
-
+    // Return an iterator of nodes filtered by a custom function
     fn find_nodes(
         &self,
         mut func: impl FnMut(&Self::NodeId, &Self::NodeWeight) -> bool,
@@ -190,7 +206,7 @@ impl<T> Dag for AdjDag<T> {
             .enumerate()
             .filter_map(move |(id, node)| if func(&id, node) { Some(id) } else { None })
     }
-
+    // Return the first node, if any, matching a custom function
     fn find_node(
         &self,
         mut func: impl FnMut(&Self::NodeId, &Self::NodeWeight) -> bool,
@@ -200,7 +216,7 @@ impl<T> Dag for AdjDag<T> {
             .enumerate()
             .find_map(|(id, node)| if func(&id, node) { Some(id) } else { None })
     }
-
+    // Fallible versions of the indexing functions, with bounds checking
     fn get(&self, id: &Self::NodeId) -> Option<&Self::NodeWeight> {
         if *id < self.nodes.len() {
             Some(&self.nodes[*id])
@@ -208,7 +224,6 @@ impl<T> Dag for AdjDag<T> {
             None
         }
     }
-
     fn get_mut(&mut self, id: &Self::NodeId) -> Option<&mut Self::NodeWeight> {
         if *id < self.nodes.len() {
             Some(&mut self.nodes[*id])
@@ -229,6 +244,7 @@ impl<T> IndexMut<&usize> for AdjDag<T> {
     }
 }
 
+// These were used during testing to make sure that arrays and DAGs were being constructed correctly
 #[cfg(test)]
 mod tests {
     use super::*;
