@@ -1,16 +1,16 @@
-use super::Node;
 use crate::dag::Dag;
+use crate::Node;
 use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 use std::rc::Rc;
 
-pub struct EdgeListDag {
-    pub nodes: Vec<Node>,
+pub struct EdgeListDag<T> {
+    pub nodes: Vec<T>,
     pub edges: Vec<(usize, usize)>,
     pub node_map: HashMap<Rc<str>, usize>,
 }
 
-impl EdgeListDag {
+impl<T> EdgeListDag<T> {
     pub fn new() -> Self {
         Self {
             nodes: Vec::new(),
@@ -19,26 +19,11 @@ impl EdgeListDag {
         }
     }
 
-    pub fn add_node(&mut self, node: Node) -> usize {
-        if let Some(&idx) = self.node_map.get(&node.id) {
-            if self.nodes[idx].is_dummy && !node.is_dummy {
-                self.nodes[idx] = node;
-            }
-            idx
-        } else {
-            let idx = self.nodes.len();
-            // Cloning an Rc just increments the reference counter, it is very fast!
-            self.node_map.insert(node.id.clone(), idx);
-            self.nodes.push(node);
-            idx
-        }
-    }
-
     pub fn add_edge(&mut self, citer_idx: usize, cited_idx: usize) {
         self.edges.push((citer_idx, cited_idx));
     }
 
-    pub fn get_connected_edges(&self, target_id: &str) -> Option<(Vec<&Node>, Vec<&Node>)> {
+    pub fn get_connected_edges(&self, target_id: &str) -> Option<(Vec<&T>, Vec<&T>)> {
         let &target_idx = self.node_map.get(target_id)?;
 
         let mut incoming = Vec::new();
@@ -56,22 +41,38 @@ impl EdgeListDag {
     }
 }
 
-impl Index<&usize> for EdgeListDag {
-    type Output = Node;
+impl EdgeListDag<Node> {
+    pub fn add_node(&mut self, node: Node) -> usize {
+        if let Some(&idx) = self.node_map.get(&node.id) {
+            if self.nodes[idx].is_dummy && !node.is_dummy {
+                self.nodes[idx] = node;
+            }
+            idx
+        } else {
+            let idx = self.nodes.len();
+            self.node_map.insert(node.id.clone(), idx);
+            self.nodes.push(node);
+            idx
+        }
+    }
+}
+
+impl<T> Index<&usize> for EdgeListDag<T> {
+    type Output = T;
 
     fn index(&self, index: &usize) -> &Self::Output {
         &self.nodes[*index]
     }
 }
 
-impl IndexMut<&usize> for EdgeListDag {
+impl<T> IndexMut<&usize> for EdgeListDag<T> {
     fn index_mut(&mut self, index: &usize) -> &mut Self::Output {
         &mut self.nodes[*index]
     }
 }
 
-impl Dag for EdgeListDag {
-    type NodeWeight = Node;
+impl<T> Dag for EdgeListDag<T> {
+    type NodeWeight = T;
     type NodeId = usize;
 
     fn neighbors(&self, node: &Self::NodeId) -> impl Iterator<Item = Self::NodeId> {
@@ -122,5 +123,11 @@ impl Dag for EdgeListDag {
 
     fn get_mut(&mut self, id: &Self::NodeId) -> Option<&mut Self::NodeWeight> {
         self.nodes.get_mut(*id)
+    }
+}
+
+impl<T> Default for EdgeListDag<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }

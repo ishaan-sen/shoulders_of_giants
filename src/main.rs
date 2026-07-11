@@ -69,7 +69,7 @@ fn filter_csv(iter: impl IntoIterator<Item = CSVRecord>) -> Vec<CSVRecord> {
         .collect()
 }
 
-fn build_graph(records: &[CSVRecord]) -> (DiGraph<Node, ()>, EdgeListDag) {
+fn build_graph(records: &[CSVRecord]) -> (DiGraph<Node, ()>, EdgeListDag<Node>) {
     let mut graph = DiGraph::<Node, ()>::new();
     let mut node_map: HashMap<Rc<str>, NodeIndex> = HashMap::new();
 
