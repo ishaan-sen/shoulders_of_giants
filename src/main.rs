@@ -355,11 +355,11 @@ fn search_papers(dag: &impl Dag<NodeWeight = Paper>) {
     if io::stdin().read_line(&mut query).is_err() {
         return;
     }
-    let query = query.trim();
+    let query = query.trim().to_lowercase();
 
     print_time_taken! {
         let ids: Vec<&Paper> = dag
-            .find_nodes(|_, w| w.title.contains(query))
+            .find_nodes(|_, w| w.title.to_lowercase().contains(&query))
             .map(|nid| &dag[&nid])
             .collect();
 
