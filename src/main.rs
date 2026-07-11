@@ -245,7 +245,7 @@ fn main() {
     println!("loading csv");
 
     let all_records = load_csv("dataset/dblp-v10.csv");
-    println!("murdering orphans");
+
     let records: Vec<CSVRecord> =
         filter_disconnected(all_records.into_iter().take(num_lines).collect());
 
