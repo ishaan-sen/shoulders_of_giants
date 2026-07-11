@@ -15,6 +15,15 @@ use dag::{Dag, earliest_common_descendant, last_common_ancestor};
 use edge_list_dag::EdgeListDag;
 use linked_dag::LinkedDag;
 
+macro_rules! print_time_taken {
+    ($($code:tt)*) => {{
+        let start = std::time::Instant::now();
+        let result = { $($code)* };
+        println!("  took {:.2?}", start.elapsed());
+        result
+    }};
+}
+
 #[derive(Clone)]
 pub struct CSVRecord {
     pub id: Rc<str>,
@@ -155,16 +164,10 @@ fn earliest_common_descendant_op(dag: &impl Dag<NodeWeight = Paper>) {
             println!(
                 "  ID: {} | Title: {} | Abstract: {}",
                 p.id,
-                if p.title.is_empty() {
-                    "(none)"
-                } else {
-                    &p.title
-                },
-                if p.abstract_text.is_empty() {
-                    "(none)"
-                } else {
-                    &p.abstract_text
-                }
+                Some(&*p.title).filter(|x| x.is_empty()).unwrap_or("(none)"),
+                Some(&*p.abstract_text)
+                    .filter(|x| x.is_empty())
+                    .unwrap_or("(none)"),
             );
         }
     }
@@ -244,22 +247,24 @@ fn main() {
     let num_lines: usize = args[1].parse().unwrap();
     println!("loading csv");
 
-    let all_records = load_csv("dataset/dblp-v10.csv");
+    let all_records = print_time_taken!(load_csv("dataset/dblp-v10.csv"));
 
-    let records: Vec<CSVRecord> =
-        filter_disconnected(all_records.into_iter().take(num_lines).collect());
+    println!("murdering orphans");
+    let records: Vec<CSVRecord> = print_time_taken!(filter_disconnected(
+        all_records.into_iter().take(num_lines).collect()
+    ));
 
     let n_records = records.len();
 
     println!("spared {n_records} papers");
     println!("building linkeddag");
-    let linked: LinkedDag<Paper> = records.iter().cloned().collect();
+    let linked: LinkedDag<Paper> = print_time_taken!(records.iter().cloned().collect());
 
     println!("building adjdag");
-    let adj: AdjDag<Paper> = records.iter().cloned().collect();
+    let adj: AdjDag<Paper> = print_time_taken!(records.iter().cloned().collect());
 
     println!("building edgelistdag");
-    let edge_list: EdgeListDag<Paper> = records.into_iter().collect();
+    let edge_list: EdgeListDag<Paper> = print_time_taken!(records.into_iter().collect());
 
     let mut active = ActiveDag::Adj(&adj);
 
@@ -290,10 +295,10 @@ fn menu_loop<'a>(
         }
 
         match choice.trim() {
-            "1" => active.list_related(),
-            "2" => active.lca(),
-            "3" => active.ecd(),
-            "4" => active.search(),
+            "1" => print_time_taken!(active.list_related()),
+            "2" => print_time_taken!(active.lca()),
+            "3" => print_time_taken!(active.ecd()),
+            "4" => print_time_taken!(active.search()),
             "5" => {
                 *active = match active {
                     ActiveDag::Adj(_) => ActiveDag::Linked(linked),
