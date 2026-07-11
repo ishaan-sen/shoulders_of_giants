@@ -1,5 +1,5 @@
+use crate::Paper;
 use crate::dag::Dag;
-use crate::Node;
 use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 use std::rc::Rc;
@@ -41,19 +41,33 @@ impl<T> EdgeListDag<T> {
     }
 }
 
-impl EdgeListDag<Node> {
-    pub fn add_node(&mut self, node: Node) -> usize {
-        if let Some(&idx) = self.node_map.get(&node.id) {
-            if self.nodes[idx].is_dummy && !node.is_dummy {
-                self.nodes[idx] = node;
-            }
-            idx
-        } else {
-            let idx = self.nodes.len();
-            self.node_map.insert(node.id.clone(), idx);
-            self.nodes.push(node);
-            idx
+impl FromIterator<crate::CSVRecord> for EdgeListDag<Paper> {
+    fn from_iter<T: IntoIterator<Item = crate::CSVRecord>>(iter: T) -> Self {
+        let mut dag = EdgeListDag::new();
+        let records: Vec<_> = iter.into_iter().collect();
+
+        for rec in &records {
+            let paper = Paper {
+                id: rec.id.clone(),
+                title: rec.title.clone(),
+                abstract_text: rec.abstract_text.clone(),
+            };
+            let idx = dag.nodes.len();
+            dag.node_map.insert(paper.id.clone(), idx);
+            dag.nodes.push(paper);
         }
+
+        for rec in &records {
+            if let Some(&citer_idx) = dag.node_map.get(&rec.id) {
+                for refr in &rec.references {
+                    if let Some(&cited_idx) = dag.node_map.get(refr) {
+                        dag.add_edge(citer_idx, cited_idx);
+                    }
+                }
+            }
+        }
+
+        dag
     }
 }
 
@@ -77,24 +91,20 @@ impl<T> Dag for EdgeListDag<T> {
 
     fn neighbors(&self, node: &Self::NodeId) -> impl Iterator<Item = Self::NodeId> {
         let target = *node;
-        self.edges.iter().filter_map(move |&(citer, cited)| {
-            if citer == target {
-                Some(cited)
-            } else {
-                None
-            }
-        })
+        self.edges.iter().filter_map(
+            move |&(citer, cited)| {
+                if citer == target { Some(cited) } else { None }
+            },
+        )
     }
 
     fn neighbors_back(&self, node: &Self::NodeId) -> impl Iterator<Item = Self::NodeId> {
         let target = *node;
-        self.edges.iter().filter_map(move |&(citer, cited)| {
-            if cited == target {
-                Some(citer)
-            } else {
-                None
-            }
-        })
+        self.edges.iter().filter_map(
+            move |&(citer, cited)| {
+                if cited == target { Some(citer) } else { None }
+            },
+        )
     }
 
     fn find_nodes(

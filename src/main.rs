@@ -11,7 +11,7 @@ use std::io::{self, Write};
 use std::rc::Rc;
 
 use adj_dag::AdjDag;
-use dag::{earliest_common_descendant, last_common_ancestor, Dag};
+use dag::{Dag, earliest_common_descendant, last_common_ancestor};
 use edge_list_dag::EdgeListDag;
 use linked_dag::LinkedDag;
 
