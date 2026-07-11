@@ -170,12 +170,14 @@ impl<T> Dag for LinkedDag<T> {
         func: impl FnMut(&NodeId<T>, &T) -> bool,
     ) -> impl Iterator<Item = NodeId<T>> {
         let mut found = HashSet::new();
-        find_nodes_impl(self, &self.heads, func, &mut found, &mut HashSet::new());
+        let mut func = func;
+        find_nodes_impl(self, &self.heads, &mut func, &mut found, &mut HashSet::new());
         found.into_iter()
     }
 
     fn find_node(&self, func: impl FnMut(&NodeId<T>, &T) -> bool) -> Option<NodeId<T>> {
-        find_node_impl(self, &self.heads, func, &mut HashSet::new())
+        let mut func = func;
+        find_node_impl(self, &self.heads, &mut func, &mut HashSet::new())
     }
 
     fn get(&self, id: &NodeId<T>) -> Option<&T> {
@@ -203,7 +205,7 @@ impl<T> Dag for LinkedDag<T> {
 fn find_nodes_impl<T>(
     graph: &LinkedDag<T>,
     nexts: &HashSet<NodeRef<T>>,
-    mut func: impl FnMut(&NodeId<T>, &T) -> bool,
+    func: &mut dyn FnMut(&NodeId<T>, &T) -> bool,
     found: &mut HashSet<NodeId<T>>,
     searched: &mut HashSet<usize>,
 ) {
@@ -216,7 +218,7 @@ fn find_nodes_impl<T>(
     for next in nexts {
         let addr = next.addr();
         if !searched.contains(&addr) {
-            find_nodes_impl(graph, &next.nexts, &mut func, found, searched);
+            find_nodes_impl(graph, &next.nexts, func, found, searched);
         }
         searched.insert(addr);
     }
@@ -225,7 +227,7 @@ fn find_nodes_impl<T>(
 fn find_node_impl<T>(
     graph: &LinkedDag<T>,
     nexts: &HashSet<NodeRef<T>>,
-    mut func: impl FnMut(&NodeId<T>, &T) -> bool,
+    func: &mut dyn FnMut(&NodeId<T>, &T) -> bool,
     searched: &mut HashSet<usize>,
 ) -> Option<NodeId<T>> {
     for next in nexts {
@@ -237,7 +239,7 @@ fn find_node_impl<T>(
     for next in nexts {
         let addr = next.addr();
         if !searched.contains(&addr)
-            && let found @ Some(_) = find_node_impl(graph, &next.nexts, &mut func, searched)
+            && let found @ Some(_) = find_node_impl(graph, &next.nexts, func, searched)
         {
             return found;
         }
