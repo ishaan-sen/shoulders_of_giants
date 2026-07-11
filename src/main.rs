@@ -49,7 +49,7 @@ fn parse_references(refs: &str) -> HashSet<Rc<str>> {
 }
 
 fn load_csv(path: &str) -> Vec<CSVRecord> {
-    let mut reader = csv::Reader::from_path(path).unwrap();
+    let mut reader = csv::Reader::from_path(path).unwrap_or_else(|_| panic!("Could not find dataset file. Please ensure it is at the location {path} relative to the current working directory"));
     reader
         .records()
         .filter_map(Result::ok)
@@ -71,14 +71,15 @@ fn list_related_papers(dag: &impl Dag<NodeWeight = Paper>) {
     }
     let id = id.trim();
 
-    let node_id = dag.find_node(|_, w| *w.id == *id).expect("Paper not found");
+    print_time_taken! {
+        let node_id = dag.find_node(|_, w| *w.id == *id).expect("Paper not found");
+        let incoming: Vec<&Paper> = dag.neighbors_back(&node_id).map(|nid| &dag[&nid]).collect();
+        let outgoing: Vec<&Paper> = dag.neighbors(&node_id).map(|nid| &dag[&nid]).collect();
 
-    let incoming: Vec<&Paper> = dag.neighbors_back(&node_id).map(|nid| &dag[&nid]).collect();
-    let outgoing: Vec<&Paper> = dag.neighbors(&node_id).map(|nid| &dag[&nid]).collect();
-
-    print_paper_table(&format!("Incoming (citations to {id})"), &incoming);
-    println!();
-    print_paper_table(&format!("Outgoing (references from {id})"), &outgoing);
+        print_paper_table(&format!("Incoming (citations to {id})"), &incoming);
+        println!();
+        print_paper_table(&format!("Outgoing (references from {id})"), &outgoing);
+    }
 }
 
 fn latest_common_ancestor_op(dag: &impl Dag<NodeWeight = Paper>) {
@@ -98,34 +99,36 @@ fn latest_common_ancestor_op(dag: &impl Dag<NodeWeight = Paper>) {
     }
     let b = b.trim();
 
-    let node_a = dag
-        .find_node(|_, w| *w.id == *a)
-        .expect("First paper not found");
-    let node_b = dag
-        .find_node(|_, w| *w.id == *b)
-        .expect("Second paper not found");
+    print_time_taken! {
+        let node_a = dag
+            .find_node(|_, w| *w.id == *a)
+            .expect("First paper not found");
+        let node_b = dag
+            .find_node(|_, w| *w.id == *b)
+            .expect("Second paper not found");
 
-    let ancestors: Vec<&Paper> = last_common_ancestor(dag, &node_a, &node_b).collect();
+        let ancestors: Vec<&Paper> = last_common_ancestor(dag, &node_a, &node_b).collect();
 
-    if ancestors.is_empty() {
-        println!("No common ancestor found.");
-    } else {
-        println!("\nLatest common ancestor(s):");
-        for p in &ancestors {
-            println!(
-                "  ID: {} | Title: {} | Abstract: {}",
-                p.id,
-                if p.title.is_empty() {
-                    "(none)"
-                } else {
-                    &p.title
-                },
-                if p.abstract_text.is_empty() {
-                    "(none)"
-                } else {
-                    &p.abstract_text
-                }
-            );
+        if ancestors.is_empty() {
+            println!("No common ancestor found.");
+        } else {
+            println!("\nLatest common ancestor(s):");
+            for p in &ancestors {
+                println!(
+                    "  ID: {} | Title: {} | Abstract: {}",
+                    p.id,
+                    if p.title.is_empty() {
+                        "(none)"
+                    } else {
+                        &p.title
+                    },
+                    if p.abstract_text.is_empty() {
+                        "(none)"
+                    } else {
+                        &p.abstract_text
+                    }
+                );
+            }
         }
     }
 }
@@ -147,28 +150,30 @@ fn earliest_common_descendant_op(dag: &impl Dag<NodeWeight = Paper>) {
     }
     let b = b.trim();
 
-    let node_a = dag
-        .find_node(|_, w| *w.id == *a)
-        .expect("First paper not found");
-    let node_b = dag
-        .find_node(|_, w| *w.id == *b)
-        .expect("Second paper not found");
+    print_time_taken! {
+        let node_a = dag
+            .find_node(|_, w| *w.id == *a)
+            .expect("First paper not found");
+        let node_b = dag
+            .find_node(|_, w| *w.id == *b)
+            .expect("Second paper not found");
 
-    let ancestors: Vec<&Paper> = earliest_common_descendant(dag, &node_a, &node_b).collect();
+        let ancestors: Vec<&Paper> = earliest_common_descendant(dag, &node_a, &node_b).collect();
 
-    if ancestors.is_empty() {
-        println!("No common ancestor found.");
-    } else {
-        println!("\nEarliest common descendant(s):");
-        for p in &ancestors {
-            println!(
-                "  ID: {} | Title: {} | Abstract: {}",
-                p.id,
-                Some(&*p.title).filter(|x| x.is_empty()).unwrap_or("(none)"),
-                Some(&*p.abstract_text)
-                    .filter(|x| x.is_empty())
-                    .unwrap_or("(none)"),
-            );
+        if ancestors.is_empty() {
+            println!("No common ancestor found.");
+        } else {
+            println!("\nEarliest common descendant(s):");
+            for p in &ancestors {
+                println!(
+                    "  ID: {} | Title: {} | Abstract: {}",
+                    p.id,
+                    Some(&*p.title).filter(|x| x.is_empty()).unwrap_or("(none)"),
+                    Some(&*p.abstract_text)
+                        .filter(|x| x.is_empty())
+                        .unwrap_or("(none)"),
+                );
+            }
         }
     }
 }
@@ -179,7 +184,7 @@ enum ActiveDag<'a> {
     EdgeList(&'a EdgeListDag<Paper>),
 }
 
-impl<'a> ActiveDag<'a> {
+impl ActiveDag<'_> {
     fn name(&self) -> &'static str {
         match self {
             ActiveDag::Adj(_) => "adjacency matrix",
@@ -295,10 +300,10 @@ fn menu_loop<'a>(
         }
 
         match choice.trim() {
-            "1" => print_time_taken!(active.list_related()),
-            "2" => print_time_taken!(active.lca()),
-            "3" => print_time_taken!(active.ecd()),
-            "4" => print_time_taken!(active.search()),
+            "1" => active.list_related(),
+            "2" => active.lca(),
+            "3" => active.ecd(),
+            "4" => active.search(),
             "5" => {
                 *active = match active {
                     ActiveDag::Adj(_) => ActiveDag::Linked(linked),
@@ -352,14 +357,16 @@ fn search_papers(dag: &impl Dag<NodeWeight = Paper>) {
     }
     let query = query.trim();
 
-    let ids: Vec<&Paper> = dag
-        .find_nodes(|_, w| w.title.contains(query))
-        .map(|nid| &dag[&nid])
-        .collect();
+    print_time_taken! {
+        let ids: Vec<&Paper> = dag
+            .find_nodes(|_, w| w.title.contains(query))
+            .map(|nid| &dag[&nid])
+            .collect();
 
-    if ids.is_empty() {
-        println!("No papers found");
-    } else {
-        print_paper_table("Found paper(s)", &ids);
+        if ids.is_empty() {
+            println!("No papers found");
+        } else {
+            print_paper_table("Found paper(s)", &ids);
+        }
     }
 }
