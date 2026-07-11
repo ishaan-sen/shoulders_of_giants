@@ -246,6 +246,7 @@ impl<T> Dag for LinkedDag<T> {
 impl<T> LinkedDag<T> {
     /// Insert a node given its weight and its forward neighbors, ignoring any forward
     /// neighbors that do not exist
+    #[allow(dead_code)]
     pub fn insert_node_lossy<I: std::borrow::Borrow<NodeId<T>>>(
         &mut self,
         weight: T,
@@ -280,7 +281,6 @@ impl FromIterator<crate::CSVRecord> for LinkedDag<crate::Paper> {
     // Build a `LinkedDag` from a list of dataset CSV entries
     fn from_iter<T: IntoIterator<Item = crate::CSVRecord>>(iter: T) -> Self {
         use std::collections::HashMap;
-        type Id = NodeId<crate::Paper>;
 
         // Mapping from paper IDs to paper metadata and reference lists
         // Paper metadata is stored as a `Paper`, and reference lists are `HashSet<Rc<str>>`
