@@ -76,7 +76,7 @@ impl<T> Deref for NodeWeak<T> {
 }
 
 struct Node<T> {
-    nexts: HashSet<NodeRef<T>>,
+    nexts: RefCell<HashSet<NodeRef<T>>>,
     prevs: RefCell<HashSet<NodeWeak<T>>>,
     value: UnsafeCell<T>,
 }
@@ -145,6 +145,7 @@ impl<T> Dag for LinkedDag<T> {
     fn neighbors(&self, node_id: &NodeId<T>) -> impl Iterator<Item = NodeId<T>> {
         node_id.node.upgrade().into_iter().flat_map(|node| {
             node.nexts
+                .borrow()
                 .iter()
                 .map(|node_ref| NodeId::new(self.graph_id, node_ref))
                 .collect_vec()
@@ -171,7 +172,13 @@ impl<T> Dag for LinkedDag<T> {
     ) -> impl Iterator<Item = NodeId<T>> {
         let mut found = HashSet::new();
         let mut func = func;
-        find_nodes_impl(self, &self.heads, &mut func, &mut found, &mut HashSet::new());
+        find_nodes_impl(
+            self,
+            &self.heads,
+            &mut func,
+            &mut found,
+            &mut HashSet::new(),
+        );
         found.into_iter()
     }
 
@@ -218,7 +225,7 @@ fn find_nodes_impl<T>(
     for next in nexts {
         let addr = next.addr();
         if !searched.contains(&addr) {
-            find_nodes_impl(graph, &next.nexts, func, found, searched);
+            find_nodes_impl(graph, &next.nexts.borrow(), func, found, searched);
         }
         searched.insert(addr);
     }
@@ -239,7 +246,7 @@ fn find_node_impl<T>(
     for next in nexts {
         let addr = next.addr();
         if !searched.contains(&addr)
-            && let found @ Some(_) = find_node_impl(graph, &next.nexts, func, searched)
+            && let found @ Some(_) = find_node_impl(graph, &next.nexts.borrow(), func, searched)
         {
             return found;
         }
@@ -263,12 +270,12 @@ impl<T> LinkedDag<T> {
             .map(NodeRef)
             .collect();
         let node = Node {
-            nexts,
+            nexts: RefCell::new(nexts),
             prevs: RefCell::default(),
             value: UnsafeCell::new(weight),
         };
         let rc = Rc::new(node);
-        for next in &rc.nexts {
+        for next in rc.nexts.borrow().iter() {
             next.prevs.borrow_mut().insert(NodeWeak(Rc::downgrade(&rc)));
             self.heads.remove(next);
         }
@@ -303,27 +310,66 @@ impl FromIterator<crate::CSVRecord> for LinkedDag<crate::Paper> {
             })
             .collect();
 
-        let mut index_map = HashMap::<Rc<str>, Id>::new();
-        let mut graph = LinkedDag::<crate::Paper>::default();
-        let mut to_add: std::collections::VecDeque<_> = metadata_map.keys().cloned().collect();
+        // let mut index_map = HashMap::<Rc<str>, Id>::new();
+        // let mut graph = LinkedDag::<crate::Paper>::default();
 
-        while let Some(id) = to_add.pop_front() {
-            let Some((metadata, refs)) = metadata_map.get(&id) else {
-                continue;
+        // let mut to_add: std::collections::VecDeque<_> = metadata_map.keys().cloned().collect();
+        // while let Some(id) = to_add.pop_front() {
+        //     let Some((metadata, refs)) = metadata_map.get(&id) else {
+        //         continue;
+        //     };
+        //     let Some(next_ids) = refs
+        //         .iter()
+        //         .filter(|&ref_id| metadata_map.contains_key(ref_id))
+        //         .map(|ref_id| index_map.get(ref_id))
+        //         .collect::<Option<Vec<_>>>()
+        //     else {
+        //         to_add.push_back(id);
+        //         continue;
+        //     };
+        //     let node_id = graph.insert_node_lossy(metadata.clone(), next_ids);
+        //     index_map.insert(id, node_id);
+        // }
+
+        // let mut priorities = HashMap::<Rc<str>, u32>::new();
+
+        let mut nodes = HashMap::<Rc<str>, NodeRef<crate::Paper>>::new();
+        for (id, (metadata, _)) in &metadata_map {
+            let node = Node {
+                nexts: RefCell::default(),
+                prevs: RefCell::default(),
+                value: UnsafeCell::new(metadata.clone()),
             };
-            let Some(next_ids) = refs
-                .iter()
-                .filter(|&ref_id| metadata_map.contains_key(ref_id))
-                .map(|ref_id| index_map.get(ref_id))
-                .collect::<Option<Vec<_>>>()
-            else {
-                to_add.push_back(id);
-                continue;
-            };
-            let node_id = graph.insert_node_lossy(metadata.clone(), next_ids);
-            index_map.insert(id, node_id);
+            nodes.insert(Rc::clone(id), NodeRef(Rc::new(node)));
         }
+        for (id, (_, refs)) in &metadata_map {
+            for ref_id in refs {
+                if !metadata_map.contains_key(ref_id) {
+                    continue;
+                }
+                nodes[id].0.nexts.borrow_mut().insert(nodes[ref_id].clone());
+                nodes[ref_id]
+                    .0
+                    .prevs
+                    .borrow_mut()
+                    .insert(NodeWeak(Rc::downgrade(&nodes[id].0)));
+            }
+        }
+        let non_head_ids: HashSet<Rc<str>> = nodes
+            .keys()
+            .flat_map(|id| metadata_map[id].1.iter().cloned())
+            .collect();
+        let heads: HashSet<_> = nodes
+            .into_iter()
+            .filter(|(id, _)| !non_head_ids.contains(id))
+            .map(|(_, node_ref)| node_ref)
+            .collect();
 
-        graph
+        // graph
+
+        LinkedDag {
+            graph_id: rand::random(),
+            heads,
+        }
     }
 }
