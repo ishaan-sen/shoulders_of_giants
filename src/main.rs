@@ -55,7 +55,7 @@ fn load_csv(path: &str) -> Vec<CSVRecord> {
 
 fn list_related_papers(dag: &impl Dag<NodeWeight = Paper>) {
     print!("Enter paper ID: ");
-    io::stdout().flush().ok();
+    io::stdout().flush().ok(); // doesn't print consistently without this
     let mut id = String::new();
     if io::stdin().read_line(&mut id).is_err() {
         return;
@@ -311,6 +311,9 @@ fn menu_loop<'a>(
     }
 }
 
+// Since this function might or might not need to modify its input, it returns
+// a clone-on-write (`Cow`) objects, which could wrap either a borrowed `&str`
+// or an owned `String`
 fn truncate_str(s: &str, max_chars: usize) -> Cow<'_, str> {
     if s.chars().count() > max_chars {
         let t: String = s.chars().take(max_chars).collect();
@@ -323,7 +326,7 @@ fn truncate_str(s: &str, max_chars: usize) -> Cow<'_, str> {
 fn print_paper_table(title: &str, papers: &[&Paper]) {
     println!("{title}");
     println!("{:-<1$}", "", 80);
-    println!("{:<30} {:<20} {:<10}", "Title", "ID", "Abstract");
+    println!("{:<30} {:<20} {:<10}", "Title", "ID", "Abstract"); // I really like this syntax actually, so much better than cpp
     println!("{:-<1$}", "", 80);
     for p in papers {
         println!(
