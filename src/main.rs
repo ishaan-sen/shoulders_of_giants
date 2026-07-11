@@ -64,7 +64,7 @@ fn load_csv(path: &str) -> Vec<CSVRecord> {
 
 fn list_related_papers(dag: &impl Dag<NodeWeight = Paper>) {
     print!("Enter paper ID: ");
-    io::stdout().flush().ok(); // doesn't print consistently without this
+    io::stdout().flush().ok(); // stdout is buffered until newlines by default
     let mut id = String::new();
     if io::stdin().read_line(&mut id).is_err() {
         return;
@@ -161,7 +161,7 @@ fn earliest_common_descendant_op(dag: &impl Dag<NodeWeight = Paper>) {
         let ancestors: Vec<&Paper> = earliest_common_descendant(dag, &node_a, &node_b).collect();
 
         if ancestors.is_empty() {
-            println!("No common ancestor found.");
+            println!("No common descendant found.");
         } else {
             println!("\nEarliest common descendant(s):");
             for p in &ancestors {
