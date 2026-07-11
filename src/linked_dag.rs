@@ -303,29 +303,23 @@ impl FromIterator<crate::CSVRecord> for LinkedDag<crate::Paper> {
 
         let mut index_map = HashMap::<Rc<str>, Id>::new();
         let mut graph = LinkedDag::<crate::Paper>::default();
+        let mut to_add: std::collections::VecDeque<_> = metadata_map.keys().cloned().collect();
 
-        #[allow(clippy::items_after_statements)]
-        fn add_paper(
-            id: &Rc<str>,
-            metadata_map: &HashMap<Rc<str>, (crate::Paper, HashSet<Rc<str>>)>,
-            index_map: &mut HashMap<Rc<str>, Id>,
-            graph: &mut LinkedDag<crate::Paper>,
-        ) -> Option<Id> {
-            if let Some(node_id) = index_map.get(id) {
-                return Some(node_id.clone());
-            }
-            let (metadata, refs) = metadata_map.get(id)?;
-            let next_ids = refs
+        while let Some(id) = to_add.pop_front() {
+            let Some((metadata, refs)) = metadata_map.get(&id) else {
+                continue;
+            };
+            let Some(next_ids) = refs
                 .iter()
-                .filter_map(|id| add_paper(id, metadata_map, index_map, graph))
-                .collect_vec();
+                .filter(|&ref_id| metadata_map.contains_key(ref_id))
+                .map(|ref_id| index_map.get(ref_id))
+                .collect::<Option<Vec<_>>>()
+            else {
+                to_add.push_back(id);
+                continue;
+            };
             let node_id = graph.insert_node_lossy(metadata.clone(), next_ids);
-            index_map.insert(Rc::clone(id), node_id.clone());
-            Some(node_id)
-        }
-
-        for id in metadata_map.keys() {
-            add_paper(id, &metadata_map, &mut index_map, &mut graph);
+            index_map.insert(id, node_id);
         }
 
         graph
