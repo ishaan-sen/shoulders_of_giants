@@ -172,15 +172,6 @@ impl<T> Dag for LinkedDag<T> {
     ) -> impl Iterator<Item = NodeId<T>> {
         let mut found = HashSet::new();
 
-        // find_nodes_impl(
-        //     self,
-        //     &self.heads,
-        //     &mut func,
-        //     &mut found,
-        //     &mut HashSet::new(),
-        // );
-        // found.into_iter()
-
         let mut searched = HashSet::<usize>::new();
         let mut to_search = self
             .heads
@@ -204,8 +195,6 @@ impl<T> Dag for LinkedDag<T> {
     }
 
     fn find_node(&self, mut func: impl FnMut(&NodeId<T>, &T) -> bool) -> Option<NodeId<T>> {
-        // find_node_impl(self, &self.heads, &mut func, &mut HashSet::new())
-
         let mut searched = HashSet::<usize>::new();
         let mut to_search = self
             .heads
@@ -248,60 +237,6 @@ impl<T> Dag for LinkedDag<T> {
             .upgrade()
             .map(|node| unsafe { &mut *node.value.get() })
     }
-}
-
-fn find_nodes_impl<T>(
-    graph: &LinkedDag<T>,
-    nexts: &HashSet<NodeRef<T>>,
-    func: &mut dyn FnMut(&NodeId<T>, &T) -> bool,
-    found: &mut HashSet<NodeId<T>>,
-    searched: &mut HashSet<usize>,
-) {
-    for next in nexts {
-        let id = NodeId::new(graph.graph_id, next);
-        if func(&id, &graph[&id]) {
-            found.insert(id);
-        }
-    }
-    for next in nexts {
-        let addr = next.addr();
-        if !searched.contains(&addr) {
-            find_nodes_impl(graph, &next.nexts.borrow(), func, found, searched);
-        }
-        searched.insert(addr);
-    }
-}
-
-// fn find_nodes_impl_2<T>(
-//     graph: &LinkedDag<T>,
-//     nexts: &HashSet<NodeRef<T>>,
-//     func: impl FnMut(&NodeId<T>, &T) -> bool,
-// ) {
-
-// }
-
-fn find_node_impl<T>(
-    graph: &LinkedDag<T>,
-    nexts: &HashSet<NodeRef<T>>,
-    func: &mut dyn FnMut(&NodeId<T>, &T) -> bool,
-    searched: &mut HashSet<usize>,
-) -> Option<NodeId<T>> {
-    for next in nexts {
-        let id = NodeId::new(graph.graph_id, next);
-        if func(&id, &graph[&id]) {
-            return Some(id);
-        }
-    }
-    for next in nexts {
-        let addr = next.addr();
-        if !searched.contains(&addr)
-            && let found @ Some(_) = find_node_impl(graph, &next.nexts.borrow(), func, searched)
-        {
-            return found;
-        }
-        searched.insert(addr);
-    }
-    None
 }
 
 impl<T> LinkedDag<T> {
