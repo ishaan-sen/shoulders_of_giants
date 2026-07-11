@@ -168,23 +168,64 @@ impl<T> Dag for LinkedDag<T> {
 
     fn find_nodes(
         &self,
-        func: impl FnMut(&NodeId<T>, &T) -> bool,
+        mut func: impl FnMut(&NodeId<T>, &T) -> bool,
     ) -> impl Iterator<Item = NodeId<T>> {
         let mut found = HashSet::new();
-        let mut func = func;
-        find_nodes_impl(
-            self,
-            &self.heads,
-            &mut func,
-            &mut found,
-            &mut HashSet::new(),
-        );
+
+        // find_nodes_impl(
+        //     self,
+        //     &self.heads,
+        //     &mut func,
+        //     &mut found,
+        //     &mut HashSet::new(),
+        // );
+        // found.into_iter()
+
+        let mut searched = HashSet::<usize>::new();
+        let mut to_search = self
+            .heads
+            .iter()
+            .cloned()
+            .collect::<std::collections::VecDeque<_>>();
+        while let Some(node_ref) = to_search.pop_front() {
+            let id = NodeId::new(self.graph_id, &node_ref);
+            if func(&id, &self[&id]) {
+                found.insert(id);
+            }
+            let addr = node_ref.addr();
+            searched.insert(addr);
+            for next in node_ref.nexts.borrow().iter() {
+                if !searched.contains(&next.addr()) {
+                    to_search.push_back(next.clone());
+                }
+            }
+        }
         found.into_iter()
     }
 
-    fn find_node(&self, func: impl FnMut(&NodeId<T>, &T) -> bool) -> Option<NodeId<T>> {
-        let mut func = func;
-        find_node_impl(self, &self.heads, &mut func, &mut HashSet::new())
+    fn find_node(&self, mut func: impl FnMut(&NodeId<T>, &T) -> bool) -> Option<NodeId<T>> {
+        // find_node_impl(self, &self.heads, &mut func, &mut HashSet::new())
+
+        let mut searched = HashSet::<usize>::new();
+        let mut to_search = self
+            .heads
+            .iter()
+            .cloned()
+            .collect::<std::collections::VecDeque<_>>();
+        while let Some(node_ref) = to_search.pop_front() {
+            let id = NodeId::new(self.graph_id, &node_ref);
+            if func(&id, &self[&id]) {
+                return Some(id);
+            }
+            let addr = node_ref.addr();
+            searched.insert(addr);
+            for next in node_ref.nexts.borrow().iter() {
+                if !searched.contains(&next.addr()) {
+                    to_search.push_back(next.clone());
+                }
+            }
+        }
+        None
     }
 
     fn get(&self, id: &NodeId<T>) -> Option<&T> {
@@ -230,6 +271,14 @@ fn find_nodes_impl<T>(
         searched.insert(addr);
     }
 }
+
+// fn find_nodes_impl_2<T>(
+//     graph: &LinkedDag<T>,
+//     nexts: &HashSet<NodeRef<T>>,
+//     func: impl FnMut(&NodeId<T>, &T) -> bool,
+// ) {
+
+// }
 
 fn find_node_impl<T>(
     graph: &LinkedDag<T>,
