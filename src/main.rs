@@ -119,16 +119,12 @@ fn latest_common_ancestor_op(dag: &impl Dag<NodeWeight = Paper>) {
                 println!(
                     "  ID: {} | Title: {} | Abstract: {}",
                     p.id,
-                    if p.title.is_empty() {
-                        "(none)"
-                    } else {
-                        &p.title
-                    },
-                    if p.abstract_text.is_empty() {
-                        "(none)"
-                    } else {
-                        &p.abstract_text
-                    }
+                    Some(&*p.title)
+                        .filter(|x| !x.is_empty())
+                        .unwrap_or("(none)"),
+                    Some(&*p.abstract_text)
+                        .filter(|x| !x.is_empty())
+                        .unwrap_or("(none)"),
                 );
             }
         }
@@ -170,9 +166,11 @@ fn earliest_common_descendant_op(dag: &impl Dag<NodeWeight = Paper>) {
                 println!(
                     "  ID: {} | Title: {} | Abstract: {}",
                     p.id,
-                    Some(&*p.title).filter(|x| x.is_empty()).unwrap_or("(none)"),
+                    Some(&*p.title)
+                        .filter(|x| !x.is_empty())
+                        .unwrap_or("(none)"),
                     Some(&*p.abstract_text)
-                        .filter(|x| x.is_empty())
+                        .filter(|x| !x.is_empty())
                         .unwrap_or("(none)"),
                 );
             }
