@@ -20,9 +20,10 @@ pub trait Dag: for<'id> IndexMut<&'id Self::NodeId, Output = Self::NodeWeight> {
         &self,
         func: impl FnMut(&Self::NodeId, &Self::NodeWeight) -> bool,
     ) -> Option<Self::NodeId>;
+    /// Get a shared reference to the value stored by a node
     fn get(&self, id: &Self::NodeId) -> Option<&Self::NodeWeight>;
+    /// Get a unique (mutable) reference to the value stored by a node
     fn get_mut(&mut self, id: &Self::NodeId) -> Option<&mut Self::NodeWeight>;
-    // what other functions go here?
 }
 
 #[allow(dead_code)]

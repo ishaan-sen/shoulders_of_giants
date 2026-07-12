@@ -24,6 +24,7 @@ macro_rules! print_time_taken {
     }};
 }
 
+/// A single row of the input CSV data
 #[derive(Clone)]
 pub struct CSVRecord {
     pub id: Rc<str>,
@@ -32,6 +33,7 @@ pub struct CSVRecord {
     pub references: HashSet<Rc<str>>,
 }
 
+/// The paper metadata stored by each node of the graphs
 #[derive(Clone)]
 pub struct Paper {
     pub id: Rc<str>,
