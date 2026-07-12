@@ -11,9 +11,9 @@ Features:
 - Given 2 papers, find the earliest common descendant
 - Given 2 papers, find the last common ancestor 
 
-Dataset: https://www.kaggle.com/datasets/nechbamohammed/research-papers-dataset 
-place the dataset in dataset/dblp-v10.csv
-
 ## Usage
+
+Dataset: https://www.kaggle.com/datasets/nechbamohammed/research-papers-dataset 
+Before running the project, make sure the dataset is downloaded and located at `dataset/dblp-v10.csv` relative to the current directory.
 
 You will need the [Rust compiler](https://rust-lang.org/tools/install/) in order to build this project for your machine. Once Rust is installed, open a terminal in the project directory and run `cargo run -r -- 170000`. The numerical argument specifies how many papers to read in *before* filtering---and we've found that 170k entries results in a 100k paper dataset.
